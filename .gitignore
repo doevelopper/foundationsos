@@ -1,0 +1,53 @@
+# Build outputs
+output/
+dl/
+.config
+.config.old
+*.o
+*.ko
+*.a
+
+# RAUC bundles
+*.raucb
+*.tar
+*.squashfs
+*.ext4
+
+# Private keys — NEVER commit private keys
+keys/**/*.pem
+keys/**/*.key
+keys/**/*.p12
+keys/**/*-private*
+!keys/**/*.pub
+!keys/**/*.crt
+!keys/**/README.md
+!keys/**/*.sh
+
+# Secrets
+*.secret
+*.env
+.env.*
+!.env.example
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/

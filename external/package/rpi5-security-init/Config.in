@@ -1,0 +1,13 @@
+config BR2_PACKAGE_RPI5_SECURITY_INIT
+    bool "rpi5-security-init"
+    depends on BR2_INIT_SYSTEMD
+    depends on BR2_PACKAGE_TPM2_TOOLS
+    help
+      First-boot TPM 2.0 provisioning and platform attestation
+      initialization service for Raspberry Pi 5.
+
+      Performs:
+        - TPM ownership taking and EK certificate provisioning
+        - AIK (Attestation Identity Key) generation
+        - Initial PCR policy sealing
+        - Disk encryption key unsealing

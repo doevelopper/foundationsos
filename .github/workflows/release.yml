@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-release:
+    name: Build Release Image
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install host dependencies
+        run: make setup
+
+      - name: Cache Buildroot downloads
+        uses: actions/cache@v4
+        with:
+          path: dl/
+          key: buildroot-dl-${{ hashFiles('configs/raspberrypi5_defconfig') }}
+          restore-keys: |
+            buildroot-dl-
+
+      - name: Download Buildroot
+        run: |
+          BUILDROOT_VERSION=2024.02
+          wget -q https://buildroot.org/downloads/buildroot-${BUILDROOT_VERSION}.tar.gz
+          tar -xzf buildroot-${BUILDROOT_VERSION}.tar.gz
+          mv buildroot-${BUILDROOT_VERSION} buildroot
+
+      - name: Configure
+        run: make configure
+
+      - name: Build
+        run: make build
+
+      - name: Compute checksums
+        run: |
+          cd output/images
+          sha256sum sdcard.img > sdcard.img.sha256
+          sha256sum rootfs.squashfs > rootfs.squashfs.sha256
+
+      - name: Generate SBOM
+        run: |
+          make -C buildroot O=output legal-info
+          tar -czf output/images/sbom-${{ github.ref_name }}.tar.gz output/legal-info/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: FoundationsOS ${{ github.ref_name }}
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') }}
+          files: |
+            output/images/sdcard.img
+            output/images/sdcard.img.sha256
+            output/images/sbom-${{ github.ref_name }}.tar.gz

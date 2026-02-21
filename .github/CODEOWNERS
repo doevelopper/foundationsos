@@ -1,0 +1,17 @@
+# CODEOWNERS
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Global fallback
+*                                   @doevelopper
+
+# Security-critical components — require explicit review
+configs/                            @doevelopper
+board/raspberrypi5/rootfs_overlay/etc/rauc/   @doevelopper
+board/raspberrypi5/rootfs_overlay/etc/optee/  @doevelopper
+keys/                               @doevelopper
+
+# CI/CD workflows
+.github/workflows/                  @doevelopper
+
+# Documentation
+docs/                               @doevelopper

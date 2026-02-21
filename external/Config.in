@@ -1,0 +1,6 @@
+menu "FoundationsOS External Packages"
+
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/rpi5-security-init/Config.in"
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/rpi5-rauc-hawkbit/Config.in"
+
+endmenu
