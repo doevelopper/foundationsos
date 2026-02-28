@@ -1,0 +1,28 @@
+[Unit]
+Description=RAUC hawkBit Updater
+Documentation=https://github.com/rauc/rauc-hawkbit-updater
+After=network-online.target rauc.service rauc-mark-good.service
+Wants=network-online.target
+Requires=rauc.service rauc-mark-good.service
+ConditionPathExists=/etc/rauc/hawkbit.conf
+ConditionFileNotEmpty=/etc/rauc/hawkbit.conf
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=30s
+ExecStart=/usr/bin/rauc-hawkbit-updater -c /etc/rauc/hawkbit.conf
+StandardOutput=journal
+StandardError=journal
+
+# Hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/data/rauc-updates
+RuntimeDirectory=rauc-hawkbit-updater
+RuntimeDirectoryMode=0750
+
+[Install]
+WantedBy=multi-user.target

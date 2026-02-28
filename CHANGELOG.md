@@ -9,8 +9,91 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-### Planned (v0.4.0)
-- RAUC A/B OTA full validation: bundle signing with offline ECDSA key, hawkBit cloud connector, integration test suite
+### Planned (v0.5.0)
+- Full disk encryption: LUKS v2 with key sealed to TPM PCR[0,4,7,8] policy (sealing key at 0x81000003)
+
+---
+
+## [0.4.0] — 2026-02-28
+
+RAUC A/B OTA update pipeline full validation: standard RAUC U-Boot boot
+variables, hawkBit cloud connector, mark-good lifecycle service, dual-board
+bundle builder, and integration smoke-test harness.
+
+### Added
+
+**hawkBit OTA connector**
+- `configs/raspberrypi5_defconfig`: `BR2_PACKAGE_RAUC_HAWKBIT_UPDATER=y` —
+  builds `rauc-hawkbit-updater` daemon into the image
+- `configs/raspberrypi3bp_defconfig`: same
+- `board/raspberrypi5/rootfs_overlay/etc/rauc/hawkbit.conf` — hawkBit client
+  configuration template: `hawkbit_server`, `ssl=true`, `ssl_verify=true`,
+  `auth_token`, `target_name`, `bundle_download_location=/data/rauc-updates`;
+  placeholder values must be replaced per-device before deployment
+- `board/raspberrypi3bp/rootfs_overlay/etc/rauc/hawkbit.conf` — same
+
+**systemd — RAUC mark-good service (both boards)**
+- `board/raspberrypi5/rootfs_overlay/etc/systemd/system/rauc-mark-good.service`
+  — `Type=oneshot RemainAfterExit=yes`; runs `rauc status mark-good` after
+  `multi-user.target`; resets `BOOT_x_LEFT` to 3, confirming the boot
+  succeeded and preventing spurious rollback
+- `board/raspberrypi3bp/rootfs_overlay/etc/systemd/system/rauc-mark-good.service`
+  — identical
+
+**systemd — hawkBit updater service (both boards)**
+- `board/raspberrypi5/rootfs_overlay/etc/systemd/system/rauc-hawkbit-updater.service`
+  — `Type=simple Restart=on-failure RestartSec=30s`; starts after
+  `network-online.target` and `rauc-mark-good.service`; only starts when
+  `/etc/rauc/hawkbit.conf` is present and non-empty; hardened unit
+  (`NoNewPrivileges`, `ProtectSystem=strict`, `PrivateTmp`,
+  `ReadWritePaths=/data/rauc-updates`)
+- `board/raspberrypi3bp/rootfs_overlay/etc/systemd/system/rauc-hawkbit-updater.service`
+  — identical
+
+**Architecture documentation**
+- `docs/adr/0008-hawkbit-ota-connector.md` — hawkBit vs alternatives
+  (SWUpdate suricatta, custom); full slot lifecycle sequence diagram
+  (install → reboot → mark-good → hawkBit feedback → rollback path);
+  security considerations (TLS, token rotation, TPM sealing in v0.5.0)
+
+**CI — RAUC validation job**
+- `.github/workflows/ci.yml`: new `rauc-validation` job validates both
+  `system.conf` files (compatible, bootloader, verity, statusfile,
+  max-bundle-download-size), hawkbit.conf presence and ssl fields, all
+  new systemd services, runs `test-rauc-bundle.sh --smoke-test`, and
+  shellchecks RAUC scripts
+
+**Integration test script**
+- `scripts/test-rauc-bundle.sh` — `--smoke-test` mode validates both boards'
+  `system.conf`, `hawkbit.conf`, all systemd services, and build scripts
+  without needing a built image; bundle mode calls `rauc info` to inspect
+  and verify a `.raucb` file; exits non-zero on any failure
+
+### Changed
+
+**RAUC U-Boot boot integration (both boards)**
+- `board/raspberrypi5/rootfs_overlay/boot/boot.cmd`: replaced custom
+  `rauc_slot` / `bootcount` logic with standard RAUC U-Boot variables
+  `BOOT_ORDER`, `BOOT_A_LEFT`, `BOOT_B_LEFT`; handles A-first (normal
+  operation) and B-first (post-update) cases; calls `reset` if all
+  slots are exhausted
+- `board/raspberrypi3bp/rootfs_overlay/boot/boot.cmd`: same treatment
+  (serial0 console, bcm2837-rpi-3-b-plus.dtb)
+
+**RAUC system.conf (both boards)**
+- Added `statusfile=/data/rauc.db` — persists slot status across reboots
+  on the writable `/data` partition
+- Added `max-bundle-download-size` — 512 MiB for RPi5, 256 MiB for RPi3B+
+- Slot `bootname` changed to uppercase `A`/`B` to match RAUC U-Boot
+  variable names `BOOT_A_LEFT` / `BOOT_B_LEFT`
+
+**Bundle builder (`scripts/build-rauc-bundle.sh`)**
+- Added `BOARD=` argument (raspberrypi5 or raspberrypi3bp)
+- Bundle name now includes board: `foundationsos-<board>-<version>.raucb`
+- Prefers `rootfs.ext4` over `rootfs.squashfs` (required for verity format)
+- Optionally includes `boot.vfat` as a boot slot when present
+- Manifest now embeds per-image SHA-256 checksums
+- Output written to `output/` root directory
 
 ---
 
@@ -287,7 +370,8 @@ _Baseline Buildroot image booting on Raspberry Pi 3B+ (AArch64 64-bit mode)._
 
 ---
 
-[Unreleased]: https://github.com/doevelopper/foundationsos/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/doevelopper/foundationsos/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/doevelopper/foundationsos/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/doevelopper/foundationsos/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/doevelopper/foundationsos/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/doevelopper/foundationsos/compare/v0.1.0...v0.1.1

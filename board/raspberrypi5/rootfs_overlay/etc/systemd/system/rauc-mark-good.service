@@ -1,0 +1,19 @@
+[Unit]
+Description=RAUC Mark Current Boot Slot as Good
+Documentation=https://rauc.readthedocs.io/en/latest/integration.html
+# Runs after RAUC daemon and all normal services are up.
+# Calls "rauc status mark-good" to reset BOOT_x_LEFT to its initial value,
+# confirming this boot succeeded and preventing spurious rollback.
+After=rauc.service multi-user.target
+Wants=rauc.service
+ConditionPathExists=/usr/bin/rauc
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/rauc status mark-good
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,6 @@
 # FoundationsOS Buildroot defconfig — Raspberry Pi 3 Model B+ (BCM2837, AArch64)
 #
-# v0.2.0 — ARM Trusted Firmware-A + OP-TEE integration.
+# v0.4.0 — RAUC A/B OTA with hawkBit cloud connector.
 #
 # Security stack included at this milestone:
 #   - ARM Trusted Firmware-A BL31 (EL3 secure monitor, loaded as armstub)
@@ -115,6 +115,7 @@ BR2_PACKAGE_TPM2_ABRMD=y
 BR2_PACKAGE_RAUC=y
 BR2_PACKAGE_RAUC_STREAMING=y
 BR2_PACKAGE_HOST_RAUC=y
+BR2_PACKAGE_RAUC_HAWKBIT_UPDATER=y
 
 # ─── Filesystem / Encryption ───────────────────────────────────────────────────
 BR2_PACKAGE_CRYPTSETUP=y

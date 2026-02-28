@@ -110,6 +110,64 @@ jobs:
             DEFCONFIG=$PWD/configs/raspberrypi3bp_defconfig defconfig
           echo "RPi3B+ defconfig applied successfully"
 
+  rauc-validation:
+    name: RAUC Configuration Validation
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y openssl shellcheck || true
+
+      - name: Validate RAUC system.conf — RPi5
+        run: |
+          grep -q "compatible=foundationsos-rpi5" board/raspberrypi5/rootfs_overlay/etc/rauc/system.conf
+          grep -q "bootloader=uboot" board/raspberrypi5/rootfs_overlay/etc/rauc/system.conf
+          grep -q "bundle-formats=verity" board/raspberrypi5/rootfs_overlay/etc/rauc/system.conf
+          grep -q "statusfile=" board/raspberrypi5/rootfs_overlay/etc/rauc/system.conf
+          grep -q "max-bundle-download-size=" board/raspberrypi5/rootfs_overlay/etc/rauc/system.conf
+          echo "RPi5 system.conf OK"
+
+      - name: Validate RAUC system.conf — RPi3B+
+        run: |
+          grep -q "compatible=foundationsos-rpi3bp" board/raspberrypi3bp/rootfs_overlay/etc/rauc/system.conf
+          grep -q "bootloader=uboot" board/raspberrypi3bp/rootfs_overlay/etc/rauc/system.conf
+          grep -q "bundle-formats=verity" board/raspberrypi3bp/rootfs_overlay/etc/rauc/system.conf
+          grep -q "statusfile=" board/raspberrypi3bp/rootfs_overlay/etc/rauc/system.conf
+          grep -q "max-bundle-download-size=" board/raspberrypi3bp/rootfs_overlay/etc/rauc/system.conf
+          echo "RPi3B+ system.conf OK"
+
+      - name: Validate hawkbit.conf templates
+        run: |
+          for board in raspberrypi5 raspberrypi3bp; do
+            CONF="board/${board}/rootfs_overlay/etc/rauc/hawkbit.conf"
+            test -f "${CONF}" || (echo "MISSING: ${CONF}" && exit 1)
+            grep -q "hawkbit_server" "${CONF}"
+            grep -q "ssl.*=.*true" "${CONF}"
+            echo "${board}/hawkbit.conf OK"
+          done
+
+      - name: Validate rauc-mark-good and rauc-hawkbit-updater services
+        run: |
+          for board in raspberrypi5 raspberrypi3bp; do
+            for svc in rauc-mark-good rauc-hawkbit-updater; do
+              F="board/${board}/rootfs_overlay/etc/systemd/system/${svc}.service"
+              test -f "${F}" || (echo "MISSING: ${F}" && exit 1)
+              echo "${board}/${svc}.service OK"
+            done
+          done
+
+      - name: Run RAUC smoke test
+        run: |
+          chmod +x scripts/test-rauc-bundle.sh scripts/build-rauc-bundle.sh
+          bash scripts/test-rauc-bundle.sh --smoke-test
+
+      - name: ShellCheck RAUC scripts
+        run: |
+          shellcheck scripts/build-rauc-bundle.sh scripts/test-rauc-bundle.sh
+
   docs:
     name: Documentation Check
     runs-on: ubuntu-22.04

@@ -1,61 +1,69 @@
 #!/bin/sh
 # boot.cmd — U-Boot boot script for FoundationsOS RPi3B+
 #
-# v0.3.0: Adds TPM 2.0 measured boot.
-# U-Boot CONFIG_MEASURED_BOOT automatically extends PCR[0/4/5/7].
-# PCR[8] is extended with the active RAUC slot for attestation.
+# v0.4.0: Standard RAUC U-Boot integration (BOOT_ORDER / BOOT_x_LEFT).
+# v0.3.0: TPM 2.0 measured boot.
 #
 # Compile with:
 #   mkimage -C none -A arm64 -T script -d boot.cmd boot.scr
 
 # ─── TPM 2.0 startup ─────────────────────────────────────────────────────────
 if tpm2 startup TPM2_SU_CLEAR; then
-    echo "TPM2: started (clear mode)"
     setenv tpm_started 1
+    echo "TPM2: started (clear mode)"
 else
-    echo "TPM2: already started or no TPM present"
     setenv tpm_started 0
+    echo "TPM2: already started or no TPM present"
 fi
 
-# ─── Default boot arguments ───────────────────────────────────────────────────
-setenv bootargs_common "console=serial0,115200 console=tty1 rootfstype=ext4 rootwait ro quiet loglevel=3 panic=5 ima_policy=tcb ima_appraise=enforce apparmor=1 security=apparmor systemd.unified_cgroup_hierarchy=1 cgroup_memory=1 cgroup_enable=memory"
+# ─── RAUC A/B slot selection (standard RAUC U-Boot variables) ────────────────
+if test "${BOOT_ORDER}" = ""; then setenv BOOT_ORDER "A B"; fi
+if test "${BOOT_A_LEFT}" = ""; then setenv BOOT_A_LEFT 3; fi
+if test "${BOOT_B_LEFT}" = ""; then setenv BOOT_B_LEFT 3; fi
 
-# ─── Slot selection ───────────────────────────────────────────────────────────
-if test "${rauc_slot}" = "b"; then
-    setenv rootpart 3
-    setenv slot_bootname "b"
-else
-    setenv rootpart 2
-    setenv slot_bootname "a"
-fi
+setenv rauc_slot ""
+setenv rootpart ""
 
-setenv bootargs "${bootargs_common} root=/dev/mmcblk0p${rootpart} rauc.slot=${slot_bootname}"
-
-# ─── Boot counter (rollback safety) ───────────────────────────────────────────
-if test -z "${bootcount}"; then
-    setenv bootcount 0
-fi
-setexpr bootcount ${bootcount} + 1
-if test "${bootcount}" -ge "${bootlimit}"; then
-    echo "Boot limit reached on slot ${slot_bootname}, switching slot..."
-    if test "${rauc_slot}" = "b"; then
-        setenv rauc_slot "a"
+if test "${BOOT_ORDER}" != "B A"; then
+    # A-first (normal / stable): try A, fall back to B
+    if test ${BOOT_A_LEFT} -gt 0; then
+        setexpr BOOT_A_LEFT ${BOOT_A_LEFT} - 1
+        setenv rauc_slot a
         setenv rootpart 2
-    else
-        setenv rauc_slot "b"
+    elif test ${BOOT_B_LEFT} -gt 0; then
+        setexpr BOOT_B_LEFT ${BOOT_B_LEFT} - 1
+        setenv rauc_slot b
         setenv rootpart 3
     fi
-    setenv bootcount 0
-    saveenv
-    setenv bootargs "${bootargs_common} root=/dev/mmcblk0p${rootpart} rauc.slot=${rauc_slot}"
+else
+    # B-first (post-update): try B, fall back to A
+    if test ${BOOT_B_LEFT} -gt 0; then
+        setexpr BOOT_B_LEFT ${BOOT_B_LEFT} - 1
+        setenv rauc_slot b
+        setenv rootpart 3
+    elif test ${BOOT_A_LEFT} -gt 0; then
+        setexpr BOOT_A_LEFT ${BOOT_A_LEFT} - 1
+        setenv rauc_slot a
+        setenv rootpart 2
+    fi
 fi
+
 saveenv
+
+if test "${rauc_slot}" = ""; then
+    echo "RAUC: All slots exhausted — system unbootable. Resetting."
+    reset
+fi
+
+# ─── Boot arguments ───────────────────────────────────────────────────────────
+setenv bootargs "console=serial0,115200 console=tty1 rootfstype=ext4 rootwait ro quiet loglevel=3 panic=5 ima_policy=tcb ima_appraise=enforce apparmor=1 security=apparmor systemd.unified_cgroup_hierarchy=1 cgroup_memory=1 cgroup_enable=memory root=/dev/mmcblk0p${rootpart} rauc.slot=${rauc_slot}"
 
 # ─── Load kernel and DTB ─────────────────────────────────────────────────────
 setenv fdt_addr    0x02600000
 setenv kernel_addr 0x00480000
 
 echo "FoundationsOS: booting slot ${rauc_slot} (rootfs p${rootpart})"
+echo "               BOOT_A_LEFT=${BOOT_A_LEFT} BOOT_B_LEFT=${BOOT_B_LEFT}"
 
 fatload mmc 0:1 ${fdt_addr}    bcm2837-rpi-3-b-plus.dtb
 fatload mmc 0:1 ${kernel_addr} Image
