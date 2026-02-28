@@ -22,16 +22,32 @@ jobs:
         uses: ludeeus/action-shellcheck@master
         with:
           scandir: './scripts'
-          additional_files: 'board/raspberrypi5/post-build.sh board/raspberrypi5/post-image.sh'
+          additional_files: >-
+            board/raspberrypi5/post-build.sh
+            board/raspberrypi5/post-image.sh
+            board/raspberrypi3bp/post-build.sh
+            board/raspberrypi3bp/post-image.sh
 
-      - name: Check defconfig syntax
+      - name: Check defconfig syntax (RPi5)
         run: |
           python3 scripts/check_defconfig.py configs/raspberrypi5_defconfig
 
-      - name: Validate RAUC system.conf
+      - name: Check defconfig syntax (RPi3B+)
+        run: |
+          python3 scripts/check_defconfig.py configs/raspberrypi3bp_defconfig
+
+      - name: Validate RAUC system.conf (RPi5)
         run: |
           if command -v rauc &>/dev/null; then
             rauc --conf=board/raspberrypi5/rootfs_overlay/etc/rauc/system.conf info || true
+          else
+            echo "rauc not installed on runner, skipping config validation"
+          fi
+
+      - name: Validate RAUC system.conf (RPi3B+)
+        run: |
+          if command -v rauc &>/dev/null; then
+            rauc --conf=board/raspberrypi3bp/rootfs_overlay/etc/rauc/system.conf info || true
           else
             echo "rauc not installed on runner, skipping config validation"
           fi
@@ -82,11 +98,17 @@ jobs:
           tar -xzf buildroot-${BUILDROOT_VERSION}.tar.gz
           mv buildroot-${BUILDROOT_VERSION} buildroot
 
-      - name: Check defconfig applies cleanly
+      - name: Check RPi5 defconfig applies cleanly
         run: |
-          make -C buildroot O=/tmp/br-output BR2_EXTERNAL=$PWD/external \
+          make -C buildroot O=/tmp/br-rpi5 BR2_EXTERNAL=$PWD/external \
             DEFCONFIG=$PWD/configs/raspberrypi5_defconfig defconfig
-          echo "Defconfig applied successfully"
+          echo "RPi5 defconfig applied successfully"
+
+      - name: Check RPi3B+ defconfig applies cleanly
+        run: |
+          make -C buildroot O=/tmp/br-rpi3bp BR2_EXTERNAL=$PWD/external \
+            DEFCONFIG=$PWD/configs/raspberrypi3bp_defconfig defconfig
+          echo "RPi3B+ defconfig applied successfully"
 
   docs:
     name: Documentation Check

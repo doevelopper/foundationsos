@@ -7,9 +7,9 @@
 arm_64bit=1
 
 # ─── ARM Trusted Firmware (EL3 armstub) ──────────────────────────────────────
-# The VideoCore firmware loads bl31.bin at 0x0 as the secure-world EL3 stub
-# before handing control to U-Boot (BL33). OP-TEE (BL32) is co-packaged.
-armstub=bl31.bin
+# TF-A integration deferred to v0.2.0. When enabled, the VideoCore firmware
+# loads bl31.bin at 0x0 as the secure-world EL3 stub before U-Boot (BL33).
+# armstub=bl31.bin   # v0.2.0
 
 # ─── Kernel / U-Boot ──────────────────────────────────────────────────────────
 kernel=u-boot.bin
