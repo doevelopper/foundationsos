@@ -56,7 +56,7 @@ if test "${rauc_slot}" = ""; then
 fi
 
 # ─── Boot arguments ───────────────────────────────────────────────────────────
-setenv bootargs "console=serial0,115200 console=tty1 rootfstype=ext4 rootwait ro quiet loglevel=3 panic=5 ima_policy=tcb ima_appraise=enforce apparmor=1 security=apparmor systemd.unified_cgroup_hierarchy=1 cgroup_memory=1 cgroup_enable=memory root=/dev/mmcblk0p${rootpart} rauc.slot=${rauc_slot}"
+setenv bootargs "console=serial0,115200 console=tty1 rootfstype=ext4 rootwait ro quiet loglevel=1 panic=5 ima_policy=tcb ima_appraise=enforce apparmor=1 security=apparmor systemd.unified_cgroup_hierarchy=1 cgroup_memory=1 cgroup_enable=memory slub_debug=FZP init_on_alloc=1 init_on_free=1 page_alloc.shuffle=1 randomize_kstack_offset=on slab_nomerge lockdown=integrity root=/dev/mmcblk0p${rootpart} rauc.slot=${rauc_slot}"
 
 # ─── Load kernel and DTB ─────────────────────────────────────────────────────
 setenv fdt_addr    0x02600000

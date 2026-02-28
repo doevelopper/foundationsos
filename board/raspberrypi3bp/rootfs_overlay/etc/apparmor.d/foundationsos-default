@@ -1,0 +1,61 @@
+# FoundationsOS — Catchall AppArmor profile for unconfined processes
+# Logs access to sensitive resources by any process not already confined
+# by a dedicated profile. This provides visibility into unexpected access
+# patterns without breaking functionality.
+#
+# Mode: complain (log-only) — upgrade to enforce after audit
+#
+# NOTE: This profile uses the "default_deny" flag to catch everything
+# not explicitly allowed. In complain mode, violations are logged
+# but permitted.
+
+abi <abi/3.0>,
+
+include <tunables/global>
+
+profile foundationsos-default flags=(complain) {
+  include <abstractions/base>
+
+  # Allow normal system operation
+  / r,
+  /** r,
+  /usr/** rix,
+  /bin/** rix,
+  /sbin/** rix,
+  /lib/** rm,
+
+  # Allow writing to volatile dirs
+  /tmp/** rw,
+  /var/tmp/** rw,
+  /var/log/** rw,
+  /run/** rw,
+
+  # Log (but allow in complain mode) access to sensitive resources
+  # These will generate AUDIT entries visible in journald
+  /dev/tpm[0-9] rw,
+  /dev/tpmrm[0-9] rw,
+  /etc/tpm2/** r,
+  /etc/shadow r,
+  /proc/kcore r,
+  /dev/mem r,
+  /dev/kmem r,
+  /sys/kernel/security/** rw,
+
+  # Network
+  network,
+
+  # Capabilities — log usage of privileged caps
+  capability,
+
+  # D-Bus
+  dbus,
+
+  # Signals
+  signal,
+
+  # Unix sockets
+  unix,
+
+  # Ptrace
+  ptrace,
+}

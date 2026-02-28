@@ -205,10 +205,10 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before
 - [x] v0.2.0 — ARM TF-A + OP-TEE integration (RPi5 & RPi3B+) ✅
 - [x] v0.3.0 — TPM 2.0 measured boot & attestation ✅
 - [x] v0.4.0 — RAUC A/B OTA updates (bundle signing, hawkBit connector) ✅
-- [x] v0.5.0 — Full disk encryption (dm-crypt/LUKS2, TPM-sealed key)
-- [x] v0.6.0 — IMA/EVM file integrity enforcement (RSA-4096 signed hashes + EVM HMAC)
-- [x] v0.7.0 — AppArmor MAC profiles in enforce mode (9 services, both boards)
-- [ ] v1.0.0 — Production-ready hardened image (both boards)
+- [x] v0.5.0 — Full disk encryption (dm-crypt/LUKS2, TPM-sealed key) ✅
+- [x] v0.6.0 — IMA/EVM file integrity enforcement (RSA-4096 signed hashes + EVM HMAC) ✅
+- [x] v0.7.0 — AppArmor MAC profiles in enforce mode (9 services, both boards) ✅
+- [x] v1.0.0 — Production-ready hardened image (both boards) ✅
 
 ---
 

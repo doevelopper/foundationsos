@@ -429,6 +429,122 @@ jobs:
       - name: Validate ADR-0011 exists
         run: test -f docs/adr/0011-apparmor-mac-profiles.md
 
+  production-hardening:
+    name: Production Hardening Validation
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate kernel cmdline hardening (both boards)
+        run: |
+          REQUIRED_PARAMS=(
+            "lockdown=integrity"
+            "slub_debug=FZP"
+            "init_on_alloc=1"
+            "init_on_free=1"
+            "slab_nomerge"
+            "randomize_kstack_offset=on"
+            "page_alloc.shuffle=1"
+            "panic=5"
+            "ima_policy=tcb"
+            "ima_appraise=enforce"
+            "apparmor=1"
+            "security=apparmor"
+          )
+          for board in raspberrypi5 raspberrypi3bp; do
+            CMDLINE="board/${board}/rootfs_overlay/boot/cmdline.txt"
+            BOOTCMD="board/${board}/rootfs_overlay/boot/boot.cmd"
+            for param in "${REQUIRED_PARAMS[@]}"; do
+              grep -q "${param}" "${CMDLINE}" || \
+                (echo "MISSING in ${CMDLINE}: ${param}" && exit 1)
+              grep -q "${param}" "${BOOTCMD}" || \
+                (echo "MISSING in ${BOOTCMD}: ${param}" && exit 1)
+            done
+            echo "${board}: kernel cmdline hardening OK"
+          done
+
+      - name: Validate sysctl hardening config (both boards)
+        run: |
+          REQUIRED_KEYS=(
+            "kernel.kptr_restrict"
+            "kernel.dmesg_restrict"
+            "kernel.perf_event_paranoid"
+            "kernel.yama.ptrace_scope"
+            "kernel.kexec_load_disabled"
+            "kernel.unprivileged_bpf_disabled"
+            "fs.protected_hardlinks"
+            "fs.protected_symlinks"
+            "fs.suid_dumpable"
+            "net.ipv4.tcp_syncookies"
+            "net.ipv4.conf.all.accept_redirects"
+          )
+          for board in raspberrypi5 raspberrypi3bp; do
+            SYSCTL="board/${board}/rootfs_overlay/etc/sysctl.d/99-foundationsos-hardening.conf"
+            test -f "${SYSCTL}" || (echo "MISSING: ${SYSCTL}" && exit 1)
+            for key in "${REQUIRED_KEYS[@]}"; do
+              grep -q "${key}" "${SYSCTL}" || \
+                (echo "MISSING in ${SYSCTL}: ${key}" && exit 1)
+            done
+            echo "${board}: sysctl hardening OK"
+          done
+
+      - name: Validate systemd hardening defaults (both boards)
+        run: |
+          for board in raspberrypi5 raspberrypi3bp; do
+            CONF="board/${board}/rootfs_overlay/etc/systemd/system.conf.d/hardening.conf"
+            test -f "${CONF}" || (echo "MISSING: ${CONF}" && exit 1)
+            grep -q "DefaultLimitCORE=0" "${CONF}"
+            grep -q "DefaultCPUAccounting=yes" "${CONF}"
+            grep -q "DefaultMemoryAccounting=yes" "${CONF}"
+            echo "${board}: systemd hardening OK"
+          done
+
+      - name: Validate SSH production hardening (both boards)
+        run: |
+          for board in raspberrypi5 raspberrypi3bp; do
+            CONF="board/${board}/rootfs_overlay/etc/ssh/sshd_config.d/hardening.conf"
+            test -f "${CONF}" || (echo "MISSING: ${CONF}" && exit 1)
+            grep -q "PermitRootLogin prohibit-password" "${CONF}"
+            grep -q "PasswordAuthentication no" "${CONF}"
+            grep -q "X11Forwarding no" "${CONF}"
+            grep -q "AllowTcpForwarding no" "${CONF}"
+            echo "${board}: SSH hardening OK"
+          done
+
+      - name: Validate tmpfiles.d config (both boards)
+        run: |
+          for board in raspberrypi5 raspberrypi3bp; do
+            CONF="board/${board}/rootfs_overlay/etc/tmpfiles.d/foundationsos.conf"
+            test -f "${CONF}" || (echo "MISSING: ${CONF}" && exit 1)
+            grep -q "/tmp" "${CONF}"
+            grep -q "/var/log" "${CONF}"
+            grep -q "/var/log/journal" "${CONF}"
+            echo "${board}: tmpfiles.d OK"
+          done
+
+      - name: Validate AppArmor catchall profile (both boards)
+        run: |
+          for board in raspberrypi5 raspberrypi3bp; do
+            PROF="board/${board}/rootfs_overlay/etc/apparmor.d/foundationsos-default"
+            test -f "${PROF}" || (echo "MISSING: ${PROF}" && exit 1)
+            grep -q "complain" "${PROF}" || \
+              (echo "Catchall profile must be in complain mode" && exit 1)
+            grep -q "foundationsos-default" "${PROF}"
+            echo "${board}: AppArmor catchall OK"
+          done
+
+      - name: Validate security-audit.sh exists and has correct syntax
+        run: |
+          test -f scripts/security-audit.sh || (echo "MISSING: scripts/security-audit.sh" && exit 1)
+          bash -n scripts/security-audit.sh
+          echo "security-audit.sh: syntax OK"
+
+      - name: Validate ADR-0012 exists
+        run: test -f docs/adr/0012-production-hardening.md
+
+      - name: Validate deployment guide exists
+        run: test -f docs/deployment-guide.md
+
   docs:
     name: Documentation Check
     runs-on: ubuntu-22.04

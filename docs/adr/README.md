@@ -13,6 +13,13 @@ ADRs document significant design decisions, their context, and consequences.
 | [ADR-0003](0003-optee-tpm2-key-storage.md) | Use OP-TEE + TPM2 for key storage and attestation | Accepted |
 | [ADR-0004](0004-systemd-init.md) | Use systemd as the init system | Accepted |
 | [ADR-0005](0005-rpi3bp-aarch64.md) | Support Raspberry Pi 3B+ in AArch64 (64-bit) mode | Accepted |
+| [ADR-0006](0006-tfa-optee-boot-chain.md) | ARM TF-A + OP-TEE boot chain | Accepted |
+| [ADR-0007](0007-tpm-measured-boot.md) | TPM 2.0 measured boot | Accepted |
+| [ADR-0008](0008-hawkbit-ota-connector.md) | hawkBit OTA connector | Accepted |
+| [ADR-0009](0009-luks-tpm-sealed-key.md) | LUKS with TPM-sealed key | Accepted |
+| [ADR-0010](0010-ima-evm-full-enforcement.md) | IMA/EVM full enforcement | Accepted |
+| [ADR-0011](0011-apparmor-mac-profiles.md) | AppArmor MAC profiles | Accepted |
+| [ADR-0012](0012-production-hardening.md) | Production hardening for v1.0.0 | Accepted |
 
 ## Template
 

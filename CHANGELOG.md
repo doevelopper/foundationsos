@@ -9,10 +9,73 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-### Planned (v1.0.0)
-- Production hardening: unconfined-process catch-all AppArmor policy,
-  EVM mode 6 (HMAC + signatures), read-only rootfs mount enforcement,
-  final security audit
+---
+
+## [1.0.0] — 2026-02-28
+
+**Production-ready hardened image** — The first stable release of
+FoundationsOS. All security subsystems (TF-A, OP-TEE, TPM, RAUC, LUKS,
+IMA/EVM, AppArmor) are fully integrated, and the system is hardened for
+production deployment on both Raspberry Pi 5 and Raspberry Pi 3 Model B+.
+
+### Added
+
+**Kernel command-line hardening (both boards)**
+- `lockdown=integrity` — Kernel lockdown preventing userspace kernel modification
+- `slub_debug=FZP` — SLUB allocator poisoning, redzoning, and sanity checks
+- `init_on_alloc=1` / `init_on_free=1` — Zero heap memory on allocation and free
+- `page_alloc.shuffle=1` — Randomize page allocator freelists
+- `randomize_kstack_offset=on` — Per-syscall kernel stack offset randomization
+- `slab_nomerge` — Prevent slab cache merging to harden heap exploitation
+
+**Sysctl security defaults** (`/etc/sysctl.d/99-foundationsos-hardening.conf`)
+- `kernel.kptr_restrict=2` — Hide kernel pointer addresses
+- `kernel.dmesg_restrict=1` — Restrict dmesg to privileged users
+- `kernel.perf_event_paranoid=3` — Disable unprivileged perf
+- `kernel.kexec_load_disabled=1` — Disable kexec after boot
+- `kernel.unprivileged_bpf_disabled=1` — Disable unprivileged BPF
+- `kernel.yama.ptrace_scope=2` — Restrict ptrace to CAP_SYS_PTRACE
+- Network hardening: SYN cookies, disabled redirects/source routing,
+  strict reverse path filtering, martian logging
+
+**systemd global hardening** (`/etc/systemd/system.conf.d/hardening.conf`)
+- `DefaultLimitCORE=0` — Disable core dumps globally
+- CPU/memory/tasks accounting enabled by default
+- Reduced service timeouts (30s)
+
+**SSH production hardening** (`/etc/ssh/sshd_config.d/hardening.conf`)
+- Root login: key-only (`prohibit-password`)
+- Password authentication disabled
+- Modern cipher suite: ChaCha20-Poly1305, AES-256-GCM
+- X11/TCP/agent forwarding disabled
+- Session limits: 3 max, 5-minute keepalive
+
+**tmpfiles.d volatile directory management** (`foundationsos.conf`)
+- Ensures `/tmp`, `/var/tmp`, `/var/log/journal`, `/var/lib/rauc`,
+  `/data` exist on read-only rootfs
+
+**AppArmor catchall profile** (`foundationsos-default`)
+- Complain-mode profile for unconfined processes
+- Logs access to sensitive resources (TPM, shadow, kcore)
+- Upgradeable to enforce mode after audit period
+
+**Security audit script** (`scripts/security-audit.sh`)
+- Automated on-target security posture verification
+- Checks: kernel cmdline, sysctl, mounts, SUID, AppArmor, IMA/EVM,
+  TPM, SSH, systemd hardening, open ports
+- Exit code 0 = all pass, 1 = failures detected
+
+**Documentation**
+- `docs/adr/0012-production-hardening.md` — ADR documenting all v1.0.0
+  hardening decisions with references to KSPP, CIS, ANSSI
+- `docs/deployment-guide.md` — Production deployment: flashing,
+  TPM provisioning, LUKS setup, SSH key deployment, OTA updates,
+  key rotation, monitoring, troubleshooting
+
+**CI: Production Hardening Validation job**
+- Validates kernel cmdline, sysctl config, systemd hardening,
+  SSH config, tmpfiles.d, AppArmor catchall, audit script,
+  ADR-0012, deployment guide
 
 ---
 
