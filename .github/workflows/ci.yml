@@ -236,6 +236,91 @@ jobs:
       - name: Validate ADR-0009 exists
         run: test -f docs/adr/0009-luks-tpm-sealed-key.md
 
+  ima-evm-validation:
+    name: IMA/EVM Validation
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate IMA scripts exist and have correct syntax
+        run: |
+          for s in scripts/generate-ima-keys.sh scripts/ima-sign-rootfs.sh scripts/evm-setup.sh; do
+            test -f "${s}" || (echo "MISSING: ${s}" && exit 1)
+            bash -n "${s}" && echo "${s}: syntax OK"
+          done
+
+      - name: ShellCheck IMA/EVM scripts
+        run: |
+          sudo apt-get install -y shellcheck -qq
+          shellcheck scripts/generate-ima-keys.sh \
+                     scripts/ima-sign-rootfs.sh \
+                     scripts/evm-setup.sh
+
+      - name: Validate ima-policy.service and evm-setup.service for both boards
+        run: |
+          for board in raspberrypi5 raspberrypi3bp; do
+            for svc in ima-policy.service evm-setup.service; do
+              F="board/${board}/rootfs_overlay/etc/systemd/system/${svc}"
+              test -f "${F}" || (echo "MISSING: ${F}" && exit 1)
+              echo "${board}/${svc}: present"
+            done
+            # ima-policy must load before sysinit
+            grep -q "Before=sysinit.target" \
+              "board/${board}/rootfs_overlay/etc/systemd/system/ima-policy.service"
+            # evm-setup must depend on tpm2-abrmd
+            grep -q "Requires=tpm2-abrmd.service" \
+              "board/${board}/rootfs_overlay/etc/systemd/system/evm-setup.service"
+            # evm-setup must run after ima-policy
+            grep -q "After=ima-policy.service" \
+              "board/${board}/rootfs_overlay/etc/systemd/system/evm-setup.service"
+            echo "${board}: service ordering OK"
+          done
+
+      - name: Validate IMA policy files for full enforcement
+        run: |
+          for board in raspberrypi5 raspberrypi3bp; do
+            POLICY="board/${board}/rootfs_overlay/etc/ima/ima-policy"
+            test -f "${POLICY}" || (echo "MISSING: ${POLICY}" && exit 1)
+            grep -q "appraise_type=imasig" "${POLICY}" || \
+              (echo "IMA policy missing imasig enforcement in ${POLICY}" && exit 1)
+            grep -q "func=MODULE_CHECK" "${POLICY}" || \
+              (echo "IMA policy missing MODULE_CHECK in ${POLICY}" && exit 1)
+            grep -q "func=FIRMWARE_CHECK" "${POLICY}" || \
+              (echo "IMA policy missing FIRMWARE_CHECK in ${POLICY}" && exit 1)
+            echo "${board}/ima-policy: enforcement rules OK"
+          done
+
+      - name: Validate kernel config fragments include IMA enforcement options
+        run: |
+          for board in raspberrypi5 raspberrypi3bp; do
+            FRAG="board/${board}/linux-hardened.config"
+            for opt in \
+              CONFIG_IMA_APPRAISE_REQUIRE_FIRMWARE_SIGS \
+              CONFIG_IMA_APPRAISE_REQUIRE_MODULE_SIGS \
+              CONFIG_IMA_WRITE_POLICY \
+              CONFIG_IMA_READ_POLICY \
+              CONFIG_EVM_ADD_XATTRS \
+              CONFIG_MODULE_SIG_FORCE; do
+              grep -q "${opt}=y" "${FRAG}" || \
+                (echo "MISSING ${opt} in ${FRAG}" && exit 1)
+            done
+            echo "${board}/linux-hardened.config: IMA/EVM kernel options OK"
+          done
+
+      - name: Validate post-build.sh installs evm-setup.sh and calls IMA signer
+        run: |
+          for board in raspberrypi5 raspberrypi3bp; do
+            PB="board/${board}/post-build.sh"
+            grep -q "evm-setup.sh" "${PB}" || \
+              (echo "MISSING evm-setup.sh install in ${PB}" && exit 1)
+            grep -q "ima-sign-rootfs.sh" "${PB}" || \
+              (echo "MISSING ima-sign-rootfs call in ${PB}" && exit 1)
+            echo "${board}/post-build.sh: IMA/EVM entries OK"
+          done
+
+      - name: Validate ADR-0010 exists
+        run: test -f docs/adr/0010-ima-evm-full-enforcement.md
+
   docs:
     name: Documentation Check
     runs-on: ubuntu-22.04

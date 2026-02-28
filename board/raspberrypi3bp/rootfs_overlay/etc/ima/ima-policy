@@ -1,18 +1,15 @@
 # IMA measurement and appraisal policy for FoundationsOS — RPi3B+
 #
-# Loaded by the kernel at boot via ima_policy=tcb cmdline option (baseline TCB
-# policy) and optionally extended at runtime via:
-#   echo <rule> > /sys/kernel/security/ima/policy
+# v0.6.0: Full enforcement mode — all root-owned executables, shared libraries,
+# kernel modules, and firmware must carry a valid IMA RSA-4096 signature
+# (security.ima xattr, template: ima-sig). Unsigned files are denied.
 #
-# Rule syntax: <action> [condition ...]
-#   action  : measure | appraise | audit | hash | dont_measure | dont_appraise
-#   condition: func=<func> mask=<mask> fsmagic=<magic> fsuuid=<uuid>
-#              uid=<uid> euid=<euid> fowner=<owner> obj_type=<type>
-#              appraise_type=imasig|meta_immutable
-#
-# Reference: Documentation/security/IMA-templates.rst
+# Loaded at boot by ima-policy.service which writes this file to:
+#   /sys/kernel/security/ima/policy
+# The kernel cmdline uses ima_policy=tcb as a baseline; this policy
+# extends/overrides the TCB rules at runtime.
 
-# ─── Do not measure/appraise pseudo filesystems ───────────────────────────────
+# ─── Do not measure/appraise pseudo and volatile filesystems ──────────────────
 dont_measure fsmagic=0x9fa0        # proc
 dont_measure fsmagic=0x62656572    # sysfs
 dont_measure fsmagic=0x64626720    # debugfs
@@ -22,6 +19,8 @@ dont_measure fsmagic=0x42494e4d    # binfmt_misc
 dont_measure fsmagic=0xcafe4a11    # fuse
 dont_measure fsmagic=0x73636673    # securityfs
 dont_measure fsmagic=0xf97cff8c    # selinuxfs
+dont_measure fsmagic=0x6e736673    # nsfs
+dont_measure fsmagic=0xde5e81e4    # efivarfs
 dont_appraise fsmagic=0x9fa0
 dont_appraise fsmagic=0x62656572
 dont_appraise fsmagic=0x64626720
@@ -29,22 +28,27 @@ dont_appraise fsmagic=0x1021994
 dont_appraise fsmagic=0x1cd1
 dont_appraise fsmagic=0x42494e4d
 dont_appraise fsmagic=0xcafe4a11
+dont_appraise fsmagic=0x6e736673
+dont_appraise fsmagic=0xde5e81e4
 
-# ─── Measure all executables and shared libraries ─────────────────────────────
-measure func=BPRM_CHECK mask=MAY_EXEC
-measure func=FILE_MMAP mask=MAY_EXEC
-measure func=MODULE_CHECK
-measure func=FIRMWARE_CHECK
-measure func=POLICY_CHECK
+# ─── Measure all executables, shared libraries, modules, firmware ─────────────
+measure func=BPRM_CHECK mask=MAY_EXEC template=ima-sig
+measure func=FILE_MMAP mask=MAY_EXEC template=ima-sig
+measure func=MODULE_CHECK template=ima-sig
+measure func=FIRMWARE_CHECK template=ima-sig
+measure func=POLICY_CHECK template=ima-sig
 
 # ─── Measure reads by root ────────────────────────────────────────────────────
 measure func=FILE_CHECK mask=MAY_READ uid=0
 
-# ─── Appraise all executables owned by root ──────────────────────────────────
-# At v0.1.1 this is set to 'fix' mode (permissive) — generates missing hashes.
-# Switch to appraise_type=imasig at v0.6.0 (signed file hashes milestone).
+# ─── Appraise executables (enforce RSA signature) ─────────────────────────────
 appraise func=BPRM_CHECK appraise_type=imasig|meta_immutable fowner=0
+appraise func=FILE_MMAP appraise_type=imasig|meta_immutable fowner=0
 appraise func=MODULE_CHECK appraise_type=imasig|meta_immutable
+appraise func=FIRMWARE_CHECK appraise_type=imasig|meta_immutable
+appraise func=POLICY_CHECK appraise_type=imasig|meta_immutable
 
-# ─── Audit writes to /etc ────────────────────────────────────────────────────
+# ─── Audit writes to sensitive paths ─────────────────────────────────────────
 audit func=FILE_CHECK mask=MAY_WRITE path=/etc
+audit func=FILE_CHECK mask=MAY_WRITE path=/usr/sbin
+audit func=FILE_CHECK mask=MAY_WRITE path=/usr/bin

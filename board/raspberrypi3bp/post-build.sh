@@ -56,4 +56,23 @@ install -D -m 750 "${BOARD_DIR}/../../scripts/luks-tpm-seal.sh" \
 mkdir -p "${TARGET_DIR}/etc/tpm2"
 chmod 700 "${TARGET_DIR}/etc/tpm2"
 
+# ─── IMA/EVM — install runtime scripts (v0.6.0) ──────────────────────────────
+install -D -m 750 "${BOARD_DIR}/../../scripts/evm-setup.sh" \
+    "${TARGET_DIR}/usr/sbin/evm-setup.sh"
+
+IMA_SIGN_SCRIPT="${BOARD_DIR}/../../scripts/ima-sign-rootfs.sh"
+IMA_KEY="${BOARD_DIR}/../../keys/ima/ima-signing-key.pem"
+IMA_CERT="${BOARD_DIR}/../../keys/ima/ima-signing-cert.pem"
+
+if [[ -x "${IMA_SIGN_SCRIPT}" ]] && \
+   [[ -f "${IMA_KEY}" ]] && \
+   command -v evmctl &>/dev/null; then
+    echo "[post-build] Signing rootfs with IMA key (raspberrypi3bp)..."
+    "${IMA_SIGN_SCRIPT}" "${TARGET_DIR}" \
+        --key  "${IMA_KEY}" \
+        --cert "${IMA_CERT}"
+else
+    echo "[post-build] WARN: Skipping IMA signing (key or evmctl not found)."
+fi
+
 echo "[post-build] Root filesystem hardening complete (raspberrypi3bp)."

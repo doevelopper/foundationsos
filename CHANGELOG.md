@@ -9,8 +9,106 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-### Planned (v0.6.0)
-- IMA/EVM full enforcement: signed file hashes, EVM HMAC keys sealed to TPM
+### Planned (v0.7.0)
+- AppArmor MAC profiles for all system services (tee-supplicant, tpm2-abrmd,
+  rauc, sshd, systemd-networkd, systemd-resolved)
+
+---
+
+## [0.6.0] — 2026-02-28
+
+Full **IMA/EVM enforcement** for both RPi5 and RPi3B+. Every root-owned
+executable, shared library, kernel module, and firmware file must carry a
+valid RSA-4096 / SHA-256 digital signature in its `security.ima` xattr.
+Files without a valid signature are **denied** at exec/mmap time. The EVM
+HMAC key is sealed to the TPM under PCR[0,4,7,8] so that xattr tampering
+is detected even if an attacker gains root access to the running system.
+
+### Added
+
+**IMA signing toolchain (build-time)**
+- `scripts/generate-ima-keys.sh` — generates RSA-4096 IMA signing key +
+  X.509 certificate (PEM + DER); generates 32-byte random EVM HMAC key.
+  Outputs to `keys/ima/`. Private key and HMAC key are build-machine-only;
+  only the DER certificate is embedded in the kernel keyring.
+- `scripts/ima-sign-rootfs.sh` — signs all root-owned ELF binaries, shared
+  objects, and kernel modules in `$TARGET_DIR` using `evmctl ima_sign`
+  (RSA-4096 / SHA-256). Called by `post-build.sh` during Buildroot's
+  post-build phase. Gracefully skips if key or `evmctl` not found.
+
+**EVM runtime script**
+- `scripts/evm-setup.sh` — unseals the 32-byte EVM HMAC key from the TPM
+  (SRK 0x81000001, PCR[sha256:0,4,7,8] policy), loads it into the kernel
+  `_evm` keyring via `keyctl`, activates EVM mode 2 (digital signatures),
+  then shreds the runtime key from `/run/evm/`. Supports
+  `--provision <key>` mode for factory TPM sealing.
+
+**systemd services — IMA policy loader (both boards)**
+- `board/raspberrypi5/rootfs_overlay/etc/systemd/system/ima-policy.service`
+  — `Type=oneshot`, `Before=sysinit.target local-fs.target`; writes
+  `/etc/ima/ima-policy` to `/sys/kernel/security/ima/policy`; guarded by
+  `ConditionSecurity=ima` and `ConditionPathExists`.
+- `board/raspberrypi3bp/rootfs_overlay/etc/systemd/system/ima-policy.service`
+  — identical.
+
+**systemd services — EVM setup (both boards)**
+- `board/raspberrypi5/rootfs_overlay/etc/systemd/system/evm-setup.service`
+  — `Type=oneshot`, `Before=sysinit.target`, `After=ima-policy.service`,
+  `Requires=tpm2-abrmd.service`; calls `evm-setup.sh`.
+- `board/raspberrypi3bp/rootfs_overlay/etc/systemd/system/evm-setup.service`
+  — identical.
+
+**Architecture documentation**
+- `docs/adr/0010-ima-evm-full-enforcement.md` — full threat model; RSA-4096
+  signing key hierarchy; build-time signing flow; runtime EVM HMAC sealing;
+  service ordering diagram; key rotation and RAUC OTA considerations;
+  alternatives considered.
+
+**CI — IMA/EVM validation job**
+- `.github/workflows/ci.yml`: new `ima-evm-validation` job validates script
+  syntax (ShellCheck), service ordering (`ima-policy Before=sysinit`,
+  `evm-setup Requires=tpm2-abrmd After=ima-policy`), IMA policy enforcement
+  rules (`appraise_type=imasig`, `MODULE_CHECK`, `FIRMWARE_CHECK`), kernel
+  config options, post-build IMA signer calls, ADR presence.
+
+### Changed
+
+**Kernel config fragments — IMA/EVM enforcement (both boards)**
+- `CONFIG_IMA_APPRAISE_REQUIRE_FIRMWARE_SIGS=y` — deny unsigned firmware
+- `CONFIG_IMA_APPRAISE_REQUIRE_KEXEC_SIGS=y` — deny unsigned kexec images
+- `CONFIG_IMA_APPRAISE_REQUIRE_MODULE_SIGS=y` — deny unsigned kernel modules
+- `CONFIG_IMA_WRITE_POLICY=y` — allow `ima-policy.service` to update policy
+- `CONFIG_IMA_READ_POLICY=y` — allow reading current policy
+- `CONFIG_EVM_ADD_XATTRS=y` — allow evmctl to add EVM xattrs at build time
+- `CONFIG_MODULE_SIG_FORCE=y` — enforce module signature (was `=n`)
+- `CONFIG_MODULE_SIG_ALL=y` — sign all in-tree modules at build time (was `=n`)
+
+**IMA policy files (both boards)**
+- Upgraded from measurement-only / permissive to **full appraisal enforcement**
+  (`appraise_type=imasig|meta_immutable` for BPRM, FILE_MMAP, MODULE, FIRMWARE,
+  POLICY checks). Added `ima-sig` template to all measure rules. Extended
+  `dont_measure`/`dont_appraise` to cover `nsfs` and `efivarfs`. Added
+  audit rules for writes to `/usr/bin` and `/usr/sbin`.
+
+**post-build.sh (both boards)**
+- Installs `evm-setup.sh` to `/usr/sbin/` (mode 750)
+- Calls `scripts/ima-sign-rootfs.sh` to sign all root-owned binaries/libs
+  if IMA key and `evmctl` are available (graceful skip with warning otherwise)
+
+### Security Notes for v0.6.0
+
+- **Private key storage:** `keys/ima/ima-signing-key.pem` must be stored in
+  an HSM or air-gapped signing station in production. It must never be
+  committed to version control or included in the Buildroot output.
+- **EVM mode:** EVM is activated in mode 2 (signature verification only).
+  Full mode 6 (HMAC + signatures) is deferred to v1.0.0 after all security
+  xattrs are pre-populated across the entire rootfs.
+- **RAUC OTA:** Each RAUC bundle must have its rootfs binaries pre-signed
+  with the IMA key before packaging. The bundle generator will be updated
+  in a future milestone.
+- **PCR re-sealing:** After a firmware or bootloader OTA update, PCR[0,4]
+  change — the EVM HMAC key must be re-sealed. A post-install RAUC hook is
+  planned for v0.6.1.
 
 ---
 
@@ -465,7 +563,8 @@ _Baseline Buildroot image booting on Raspberry Pi 3B+ (AArch64 64-bit mode)._
 
 ---
 
-[Unreleased]: https://github.com/doevelopper/foundationsos/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/doevelopper/foundationsos/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/doevelopper/foundationsos/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/doevelopper/foundationsos/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/doevelopper/foundationsos/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/doevelopper/foundationsos/compare/v0.2.0...v0.3.0

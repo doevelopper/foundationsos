@@ -1,6 +1,6 @@
 # FoundationsOS Buildroot defconfig — Raspberry Pi 5 (BCM2712)
 #
-# v0.5.0 — Full disk encryption (LUKS2 with TPM-sealed key).
+# v0.6.0 — IMA/EVM full enforcement (signed file hashes + EVM HMAC).
 #
 # Security stack included at this milestone:
 #   - ARM Trusted Firmware-A BL31 (EL3 secure monitor, armstub)
@@ -9,8 +9,8 @@
 #   - TPM 2.0 userspace stack (tpm2-tss, tpm2-tools, tpm2-abrmd)
 #   - RAUC A/B atomic OTA update framework
 #   - systemd init with hardened service units
-#   - IMA/EVM kernel integrity measurement
-#   - dm-crypt / LUKS encrypted storage support
+#   - IMA/EVM full enforcement: RSA-4096 signed file hashes + EVM HMAC
+#   - dm-crypt / LUKS2 encrypted storage (TPM-sealed key)
 #   - AppArmor MAC, seccomp, kernel lockdown
 #
 # Boot chain (EL levels):

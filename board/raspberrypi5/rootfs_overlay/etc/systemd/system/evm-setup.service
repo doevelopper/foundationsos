@@ -1,0 +1,23 @@
+[Unit]
+Description=Load EVM HMAC key and activate EVM integrity enforcement
+Documentation=https://github.com/doevelopper/foundationsos/docs/adr/0010-ima-evm-full-enforcement.md
+DefaultDependencies=no
+# Must activate EVM before any filesystem access so xattr checks apply.
+Before=sysinit.target local-fs.target
+After=ima-policy.service tpm2-abrmd.service
+Requires=tpm2-abrmd.service
+
+ConditionSecurity=ima
+ConditionPathExists=/sys/kernel/security/evm
+ConditionPathExists=/etc/tpm2/evm-hmac.pub
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/evm-setup.sh
+ExecStop=/bin/true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=sysinit.target

@@ -1,0 +1,20 @@
+[Unit]
+Description=Load IMA appraisal policy
+Documentation=https://github.com/doevelopper/foundationsos/docs/adr/0010-ima-evm-full-enforcement.md
+DefaultDependencies=no
+Before=sysinit.target local-fs.target
+After=systemd-remount-fs.service
+ConditionSecurity=ima
+ConditionPathExists=/sys/kernel/security/ima/policy
+ConditionPathExists=/etc/ima/ima-policy
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'cat /etc/ima/ima-policy > /sys/kernel/security/ima/policy'
+ExecStop=/bin/true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=sysinit.target
