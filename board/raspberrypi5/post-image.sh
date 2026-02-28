@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # post-image.sh — Executed by Buildroot after the filesystem images are created.
-# Assembles the final SD card image using genimage.
+# Copies boot overlay files into BINARIES_DIR, compiles the U-Boot boot script,
+# then invokes genimage to assemble the final SD card image.
 #
 # $1 = BINARIES_DIR (output/images)
 
@@ -17,6 +18,29 @@ if ! command -v genimage &>/dev/null; then
     exit 1
 fi
 
+# ─── Copy board-specific boot files into BINARIES_DIR ─────────────────────────
+# genimage reads all boot partition files from BINARIES_DIR (inputpath).
+for f in config.txt cmdline.txt; do
+    src="${BOARD_DIR}/rootfs_overlay/boot/${f}"
+    if [ -f "${src}" ]; then
+        cp -f "${src}" "${BINARIES_DIR}/${f}"
+        echo "[post-image] Copied ${f} → BINARIES_DIR"
+    fi
+done
+
+# ─── Compile U-Boot boot script ───────────────────────────────────────────────
+BOOT_CMD="${BOARD_DIR}/rootfs_overlay/boot/boot.cmd"
+BOOT_SCR="${BINARIES_DIR}/boot.scr"
+if [ -f "${BOOT_CMD}" ]; then
+    if command -v mkimage &>/dev/null; then
+        mkimage -C none -A arm64 -T script -d "${BOOT_CMD}" "${BOOT_SCR}"
+        echo "[post-image] Compiled boot.scr from boot.cmd"
+    else
+        echo "[post-image] WARNING: 'mkimage' not found. boot.scr not compiled."
+        echo "[post-image]          Install u-boot-tools on the host or enable BR2_PACKAGE_HOST_UBOOT_TOOLS."
+    fi
+fi
+
 echo "[post-image] Generating disk image..."
 
 rm -rf "${GENIMAGE_TMP}"
@@ -29,6 +53,5 @@ genimage \
 
 echo "[post-image] SD card image: ${BINARIES_DIR}/sdcard.img"
 
-# Generate SHA-256 checksum
 sha256sum "${BINARIES_DIR}/sdcard.img" > "${BINARIES_DIR}/sdcard.img.sha256"
 echo "[post-image] Checksum: ${BINARIES_DIR}/sdcard.img.sha256"

@@ -1,0 +1,39 @@
+# Raspberry Pi firmware config — FoundationsOS RPi5 (BCM2712)
+#
+# This file is read by the VideoCore firmware at boot before any ARM code runs.
+# It configures the boot environment for a secured, headless embedded system.
+
+# ─── ARM 64-bit mode ──────────────────────────────────────────────────────────
+# BCM2712 defaults to 64-bit, but explicitly set for clarity.
+arm_64bit=1
+
+# ─── Kernel / Bootloader ──────────────────────────────────────────────────────
+# Boot via U-Boot for RAUC A/B support and verified boot.
+# U-Boot then loads the Linux kernel FIT image.
+kernel=u-boot.bin
+
+# ─── GPU memory ───────────────────────────────────────────────────────────────
+# Headless embedded system — allocate the minimum GPU memory.
+gpu_mem=16
+
+# ─── UART console ─────────────────────────────────────────────────────────────
+# Enable UART for serial console output (ttyAMA10 on RPi5 via RP1 UART0).
+enable_uart=1
+# Show VideoCore firmware boot messages on UART (useful for bring-up debugging).
+uart_2ndstage=1
+
+# ─── Device Tree ──────────────────────────────────────────────────────────────
+device_tree=bcm2712-rpi-5-b.dtb
+
+# ─── SPI TPM 2.0 (Infineon SLB9670 on SPI0 CE1) ──────────────────────────────
+# Enables the TPM 2.0 SPI device tree overlay.
+# Wiring: SPI0 MOSI=GPIO10, MISO=GPIO9, CLK=GPIO11, CE1=GPIO7
+# Remove this line if no TPM module is fitted; the system will still boot.
+dtoverlay=tpm-slb9670,spi0-1
+
+# ─── Disable onboard features not required for headless operation ─────────────
+dtparam=act_led_trigger=none
+dtparam=act_led_activelow=off
+
+# ─── HDMI (disabled for headless) ────────────────────────────────────────────
+hdmi_blanking=2
