@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![REUSE compliant](https://api.reuse.software/badge/github.com/doevelopper/foundationsos)](https://api.reuse.software/info/github.com/doevelopper/foundationsos)
 
-**A security-hardened embedded Linux OS for Raspberry Pi 5**  
+**A security-hardened embedded Linux OS for Raspberry Pi 5 & 3B+**  
 *Built on Buildroot · Secured by TPM2 · Protected by OP-TEE & ARM TF-A · Updated via RAUC*
 
 </div>
@@ -16,7 +16,14 @@
 
 ## Overview
 
-**FoundationsOS** is a production-grade, security-first embedded Linux distribution targeting the **Raspberry Pi 5 (BCM2712)** platform. It is built with [Buildroot](https://buildroot.org/) and integrates a full chain of trust from hardware-backed root of trust to over-the-air update delivery.
+**FoundationsOS** is a production-grade, security-first embedded Linux distribution targeting **Raspberry Pi 5** (BCM2712) and **Raspberry Pi 3 Model B+** (BCM2837, AArch64 64-bit mode). It is built with [Buildroot](https://buildroot.org/) and integrates a full chain of trust from hardware-backed root of trust to over-the-air update delivery.
+
+## Supported Platforms
+
+| Board | SoC | CPU | `BOARD=` |
+|-------|-----|-----|----------|
+| Raspberry Pi 5 | BCM2712 | 4× Cortex-A76 @ 2.4 GHz | `raspberrypi5` (default) |
+| Raspberry Pi 3 Model B+ | BCM2837 | 4× Cortex-A53 @ 1.4 GHz (AArch64) | `raspberrypi3bp` |
 
 ### Key Features
 
@@ -83,24 +90,28 @@ make setup
 ### Building
 
 ```bash
-# Configure for Raspberry Pi 5
+# Configure and build for Raspberry Pi 5 (default)
 make configure
-
-# Build the full image (takes 30–90 min on first run)
 make build
 
-# Output images are in output/images/
-make images
+# Configure and build for Raspberry Pi 3 Model B+ (AArch64)
+make configure BOARD=raspberrypi3bp
+make build     BOARD=raspberrypi3bp
+
+# Output images are in output/<board>/images/
 ```
 
 ### Flashing
 
 ```bash
-# Flash to SD card (replace /dev/sdX with your device)
+# Flash RPi5 image
 make flash DEVICE=/dev/sdX
 
-# Or use the helper script
-./scripts/flash.sh --device /dev/sdX --image output/images/sdcard.img
+# Flash RPi3B+ image
+make flash BOARD=raspberrypi3bp DEVICE=/dev/sdX
+
+# Or use the helper script directly
+./scripts/flash.sh --device /dev/sdX --image output/raspberrypi3bp/images/sdcard.img
 ```
 
 ### OTA Update
@@ -123,28 +134,38 @@ foundationsos/
 │   ├── workflows/              # CI/CD pipelines
 │   └── ISSUE_TEMPLATE/         # Bug report & feature request templates
 ├── board/
-│   └── raspberrypi5/           # Board-specific files
-│       ├── rootfs_overlay/     # Files overlaid onto the root filesystem
-│       ├── patches/            # Board-specific patches
-│       ├── post-build.sh       # Post-build hook
-│       ├── post-image.sh       # Post-image hook
-│       └── genimage.cfg        # Disk image layout
+│   ├── raspberrypi5/           # Raspberry Pi 5 board files
+│   │   ├── rootfs_overlay/     # Files overlaid onto the root filesystem
+│   │   ├── patches/            # Board-specific patches
+│   │   ├── post-build.sh
+│   │   ├── post-image.sh
+│   │   └── genimage.cfg        # Disk image layout (256 MiB boot, A/B rootfs)
+│   └── raspberrypi3bp/         # Raspberry Pi 3B+ board files (AArch64)
+│       ├── rootfs_overlay/
+│       │   └── boot/
+│       │       ├── config.txt  # arm_64bit=1, armstub=bl31.bin, tpm-slb9670
+│       │       └── cmdline.txt
+│       ├── patches/
+│       ├── post-build.sh
+│       ├── post-image.sh
+│       └── genimage.cfg        # Disk image layout (128 MiB boot, A/B rootfs)
 ├── configs/
-│   └── raspberrypi5_defconfig  # Buildroot defconfig
+│   ├── raspberrypi5_defconfig  # Buildroot defconfig — RPi5 (Cortex-A76)
+│   └── raspberrypi3bp_defconfig # Buildroot defconfig — RPi3B+ (Cortex-A53, AArch64)
 ├── docs/                       # Project documentation
-│   ├── architecture/           # Architecture decision records & diagrams
-│   ├── adr/                    # Architecture Decision Records
-│   └── *.md                    # Guides and references
+│   ├── architecture/           # Architecture diagrams and guides
+│   ├── adr/                    # Architecture Decision Records (ADR-0001–0005)
+│   └── *.md
 ├── external/
 │   └── package/                # External Buildroot packages
 ├── keys/                       # Key generation scripts (NO private keys in VCS)
-│   ├── rauc/                   # RAUC signing key infrastructure
-│   └── optee/                  # OP-TEE key scripts
+│   ├── rauc/
+│   └── optee/
 ├── scripts/                    # Build & utility scripts
 │   ├── setup-env.sh
 │   ├── build.sh
 │   └── flash.sh
-├── Makefile                    # Top-level convenience targets
+├── Makefile                    # Board-aware top-level targets (BOARD=...)
 ├── CHANGELOG.md
 ├── CONTRIBUTING.md
 └── LICENSE
@@ -180,13 +201,14 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before
 ## Roadmap
 
 - [ ] v0.1.0 — Baseline Buildroot image booting on RPi5
-- [ ] v0.2.0 — ARM TF-A + OP-TEE integration
+- [ ] v0.1.1 — Baseline Buildroot image booting on RPi3B+ (AArch64)
+- [ ] v0.2.0 — ARM TF-A + OP-TEE integration (RPi5 & RPi3B+)
 - [ ] v0.3.0 — TPM 2.0 measured boot & attestation
 - [ ] v0.4.0 — RAUC A/B OTA updates
 - [ ] v0.5.0 — Full disk encryption (dm-crypt/LUKS)
 - [ ] v0.6.0 — IMA/EVM file integrity
 - [ ] v0.7.0 — AppArmor MAC policies
-- [ ] v1.0.0 — Production-ready hardened image
+- [ ] v1.0.0 — Production-ready hardened image (both boards)
 
 ---
 

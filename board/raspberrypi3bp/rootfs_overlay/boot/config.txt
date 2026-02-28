@@ -1,0 +1,41 @@
+# Raspberry Pi firmware config for FoundationsOS — RPi3 Model B+ (64-bit mode)
+#
+# IMPORTANT: arm_64bit=1 switches the VideoCore firmware to load a 64-bit
+# (AArch64) kernel/armstub instead of the default 32-bit (ARM) image.
+
+# ─── 64-bit AArch64 mode ──────────────────────────────────────────────────────
+arm_64bit=1
+
+# ─── ARM Trusted Firmware (EL3 armstub) ──────────────────────────────────────
+# The VideoCore firmware loads bl31.bin at 0x0 as the secure-world EL3 stub
+# before handing control to U-Boot (BL33). OP-TEE (BL32) is co-packaged.
+armstub=bl31.bin
+
+# ─── Kernel / U-Boot ──────────────────────────────────────────────────────────
+kernel=u-boot.bin
+
+# ─── GPU memory (headless / minimal) ─────────────────────────────────────────
+gpu_mem=16
+
+# ─── Serial console ───────────────────────────────────────────────────────────
+enable_uart=1
+# Log firmware boot messages on UART (useful for debugging)
+uart_2ndstage=1
+
+# ─── Bluetooth — disable to reclaim hardware UART0 for console ───────────────
+# Without this overlay, UART0 is routed to Bluetooth and the serial console
+# falls back to the mini-UART (unreliable at high baud rates).
+dtoverlay=disable-bt
+
+# ─── SPI — enable for external TPM 2.0 module ────────────────────────────────
+# Tested with Infineon SLB9670 on SPI0 CE0 (GPIO 8, 9, 10, 11).
+dtparam=spi=on
+dtoverlay=tpm-slb9670
+
+# ─── I2C (optional, disabled by default) ─────────────────────────────────────
+# dtparam=i2c_arm=on
+
+# ─── Device Tree ──────────────────────────────────────────────────────────────
+# Explicitly select RPi3B+ DTB (redundant when using a U-Boot that does this,
+# but kept for clarity and firmware-level guarantee).
+device_tree=bcm2837-rpi-3-b-plus.dtb

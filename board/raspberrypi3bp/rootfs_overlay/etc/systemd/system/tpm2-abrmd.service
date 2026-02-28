@@ -1,0 +1,25 @@
+[Unit]
+Description=TPM2 Resource Manager (ABRMD)
+Documentation=man:tpm2-abrmd(8)
+After=dev-tpm0.device
+Requires=dev-tpm0.device
+
+[Service]
+Type=dbus
+BusName=com.intel.tss2.Tabrmd
+ExecStart=/usr/sbin/tpm2-abrmd --tcti=device:/dev/tpm0
+User=tss
+Group=tss
+Restart=on-failure
+RestartSec=5s
+
+# Hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+CapabilityBoundingSet=CAP_DAC_OVERRIDE
+AmbientCapabilities=CAP_DAC_OVERRIDE
+
+[Install]
+WantedBy=multi-user.target

@@ -12,6 +12,7 @@ ADRs document significant design decisions, their context, and consequences.
 | [ADR-0002](0002-ab-partition-rauc.md) | Use RAUC with A/B partitions for OTA updates | Accepted |
 | [ADR-0003](0003-optee-tpm2-key-storage.md) | Use OP-TEE + TPM2 for key storage and attestation | Accepted |
 | [ADR-0004](0004-systemd-init.md) | Use systemd as the init system | Accepted |
+| [ADR-0005](0005-rpi3bp-aarch64.md) | Support Raspberry Pi 3B+ in AArch64 (64-bit) mode | Accepted |
 
 ## Template
 
