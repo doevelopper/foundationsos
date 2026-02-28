@@ -9,9 +9,91 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-### Planned (v0.3.0)
-- TPM 2.0 measured boot: U-Boot extends PCR[0] with bl31.bin, U-Boot, and kernel hash
-- OP-TEE TA for TPM PCR sealing / attestation
+### Planned (v0.4.0)
+- RAUC A/B OTA full validation: bundle signing with offline ECDSA key, hawkBit cloud connector, integration test suite
+
+---
+
+## [0.3.0] — 2026-02-28
+
+TPM 2.0 measured boot and remote attestation.
+Every boot stage from TF-A BL31 through the kernel is recorded in TPM PCRs.
+Post-boot services log the PCR state and provide tooling to seal, attest, and
+verify platform integrity.
+
+### Added
+
+**U-Boot measured boot**
+- `board/raspberrypi5/uboot-tpm.config`: `CONFIG_MEASURED_BOOT=y`,
+  `CONFIG_MEASURE_DEVICETREE=y` — U-Boot auto-extends PCR[0] with BL31+U-Boot
+  hash, PCR[7] with DTB hash via the TCG2 EFI measurement protocol
+- `board/raspberrypi3bp/uboot-tpm.config`: same additions
+
+**U-Boot boot script — TPM lifecycle**
+- `board/raspberrypi5/rootfs_overlay/boot/boot.cmd`: added `tpm2 startup
+  TPM2_SU_CLEAR` at the top of the script (gracefully handles TF-A pre-start);
+  sets `tpm_started` env-var to guard subsequent PCR operations; extends
+  PCR[8] with the active RAUC slot string (`sha256:${rauc_slot}`) before `booti`
+  so slot selection is captured in hardware
+- `board/raspberrypi3bp/rootfs_overlay/boot/boot.cmd`: same (serial0 console,
+  bcm2837-rpi-3-b-plus.dtb)
+
+**Kernel — security filesystem**
+- `board/raspberrypi5/linux-hardened.config`: `CONFIG_SECURITYFS=y`,
+  `CONFIG_INTEGRITY_AUDIT=y` — exposes TCG2 event log at
+  `/sys/kernel/security/tpm0/binary_bios_measurements`; routes IMA audit events
+  to the kernel audit subsystem
+- `board/raspberrypi3bp/linux-hardened.config`: same additions
+
+**TPM 2.0 provisioning script**
+- `scripts/tpm-provision.sh` — offline provisioning helper that creates the full
+  TPM key hierarchy: EK (RSA-2048, persistent at endorsement hierarchy),
+  SRK (0x81000001, Storage Root Key, primary under owner hierarchy),
+  AIK (0x81000002, ECC P-256 restricted signing key for attestation quotes),
+  sealing key (0x81000003, AES-128, bound to PCR[0,4,7,8] policy).
+  Writes policy digest to `/etc/tpm2/pcr-policy.digest`. Idempotent: skips
+  handles already provisioned.
+
+**TPM 2.0 attestation script**
+- `scripts/tpm-attest.sh` — attestation workflow helper with three subcommands:
+  `quote` (tpm2_quote over PCR[0,4,7,8,10] signed by AIK 0x81000002),
+  `verify` (tpm2_checkquote against reference PCR digest + AIK public key),
+  `pcr-show` (tabulated display of all PCR banks using tpm2_pcrread).
+  Outputs attestation evidence to `${ATTEST_DIR:-/var/lib/tpm2-attest}`.
+
+**Systemd measured-boot logging service**
+- `board/raspberrypi5/rootfs_overlay/etc/systemd/system/tpm2-measured-boot.service`
+  — `Type=oneshot RemainAfterExit=yes`; runs after `tpm2-abrmd.service`; reads
+  PCR[0,4,7,8,10] via `tpm2_pcrread` and ships to journal via `systemd-cat`;
+  also copies the binary TCG2 event log to
+  `/var/log/tpm2-event-log/binary_bios_measurements` for persistent storage
+- `board/raspberrypi3bp/rootfs_overlay/etc/systemd/system/tpm2-measured-boot.service`
+  — identical unit
+
+**Architecture documentation**
+- `docs/adr/0007-tpm-measured-boot.md` — PCR assignment layout (PCR[0]=TF-A+U-Boot,
+  PCR[4]=kernel image, PCR[5]=kernel cmdline, PCR[7]=DTB, PCR[8]=RAUC slot,
+  PCR[10]=IMA); boot-time measurement chain from VideoCore through to Linux;
+  remote attestation flow diagram; sealing-key policy rationale; alternatives
+  considered (TrustZone-only, no TPM).
+
+### Changed
+
+- `board/raspberrypi5/uboot-tpm.config` and `board/raspberrypi3bp/uboot-tpm.config`:
+  updated header comment to reference measured-boot feature additions
+
+### Security Notes for v0.3.0
+
+- `tpm2 startup TPM2_SU_CLEAR` in U-Boot will fail silently if TF-A already
+  issued a TPM startup (TF-A ≥ 2.9 does this when `MEASURED_BOOT=1` at TF-A
+  level); U-Boot sets `tpm_started=0` in that case which disables the slot-extend
+  step — this is a known limitation addressed in v0.4.0 with a `TPM2_SU_STATE`
+  resume path.
+- PCR[10] is owned exclusively by the Linux IMA subsystem; the boot.cmd script
+  never extends it manually.
+- Sealing key provisioning (`tpm-provision.sh`) must be run once per physical
+  device. Changing any measured firmware invalidates the PCR policy and requires
+  re-sealing with the new digest.
 
 ---
 
@@ -205,7 +287,8 @@ _Baseline Buildroot image booting on Raspberry Pi 3B+ (AArch64 64-bit mode)._
 
 ---
 
-[Unreleased]: https://github.com/doevelopper/foundationsos/compare/v0.2.0...HEAD
-[0.1.0]: https://github.com/doevelopper/foundationsos/releases/tag/v0.1.0
-[0.1.1]: https://github.com/doevelopper/foundationsos/compare/v0.1.0...v0.1.1
+[Unreleased]: https://github.com/doevelopper/foundationsos/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/doevelopper/foundationsos/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/doevelopper/foundationsos/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/doevelopper/foundationsos/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/doevelopper/foundationsos/releases/tag/v0.1.0

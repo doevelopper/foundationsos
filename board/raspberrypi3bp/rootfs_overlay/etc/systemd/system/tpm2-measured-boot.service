@@ -1,0 +1,52 @@
+# tpm2-measured-boot.service — Log TPM PCR values at boot completion
+#
+# Reads the TPM PCR values established during measured boot (by TF-A + U-Boot)
+# and logs them to the systemd journal. Also exports the U-Boot TCG2 event log
+# summary. This provides a persistent audit record of the boot measurement chain.
+#
+# The service runs after tpm2-abrmd and tee-supplicant are ready so the full
+# TPM2 resource manager stack is available.
+#
+# Requires: tpm2-tools, tpm2-abrmd (both installed via Buildroot packages)
+
+[Unit]
+Description=TPM 2.0 Measured Boot — Log PCR Values
+Documentation=https://github.com/doevelopper/foundationsos/blob/main/docs/adr/0007-tpm-measured-boot.md
+After=tpm2-abrmd.service tee-supplicant.service
+Requires=tpm2-abrmd.service
+ConditionPathExists=/dev/tpm0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# Read PCR banks relevant to the FoundationsOS measured boot chain:
+#   PCR[0]  — U-Boot firmware (CONFIG_MEASURED_BOOT)
+#   PCR[4]  — Kernel Image + FIT payload
+#   PCR[7]  — Device Tree Blob
+#   PCR[8]  — RAUC slot name (extended by boot.cmd)
+#   PCR[10] — IMA measurement log aggregate (extended by kernel)
+ExecStart=/bin/sh -c ' \
+    echo "=== FoundationsOS TPM2 Measured Boot PCR Log ===" | systemd-cat -t tpm2-measured-boot -p info; \
+    tpm2_pcrread sha256:0,4,7,8,10 2>&1 | systemd-cat -t tpm2-measured-boot -p info; \
+    if [ -f /sys/kernel/security/tpm0/binary_bios_measurements ]; then \
+        echo "--- TCG2 Event Log ---" | systemd-cat -t tpm2-measured-boot -p info; \
+        tpm2_eventlog /sys/kernel/security/tpm0/binary_bios_measurements 2>&1 | \
+            head -100 | systemd-cat -t tpm2-measured-boot -p info; \
+    fi; \
+    echo "=== PCR log complete ===" | systemd-cat -t tpm2-measured-boot -p info \
+'
+
+# ─── Hardening ────────────────────────────────────────────────────────────────
+User=root
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+PrivateDevices=no
+DeviceAllow=/dev/tpm0 rw
+DeviceAllow=/dev/tpmrm0 rw
+
+[Install]
+WantedBy=multi-user.target

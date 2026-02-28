@@ -1,13 +1,21 @@
 #!/bin/sh
 # boot.cmd — U-Boot boot script for FoundationsOS RPi3B+
 #
-# Implements RAUC A/B slot selection using U-Boot environment variables.
+# v0.3.0: Adds TPM 2.0 measured boot.
+# U-Boot CONFIG_MEASURED_BOOT automatically extends PCR[0/4/5/7].
+# PCR[8] is extended with the active RAUC slot for attestation.
+#
 # Compile with:
 #   mkimage -C none -A arm64 -T script -d boot.cmd boot.scr
-#
-# RAUC sets rauc_slot to "a" or "b" in the U-Boot environment.
-# U-Boot increments bootcount; if it reaches bootlimit the slot is switched.
-# On successful boot RAUC resets bootcount to 0 and marks the slot good.
+
+# ─── TPM 2.0 startup ─────────────────────────────────────────────────────────
+if tpm2 startup TPM2_SU_CLEAR; then
+    echo "TPM2: started (clear mode)"
+    setenv tpm_started 1
+else
+    echo "TPM2: already started or no TPM present"
+    setenv tpm_started 0
+fi
 
 # ─── Default boot arguments ───────────────────────────────────────────────────
 setenv bootargs_common "console=serial0,115200 console=tty1 rootfstype=ext4 rootwait ro quiet loglevel=3 panic=5 ima_policy=tcb ima_appraise=enforce apparmor=1 security=apparmor systemd.unified_cgroup_hierarchy=1 cgroup_memory=1 cgroup_enable=memory"
@@ -43,14 +51,19 @@ if test "${bootcount}" -ge "${bootlimit}"; then
 fi
 saveenv
 
-# ─── Load and boot kernel ─────────────────────────────────────────────────────
+# ─── Load kernel and DTB ─────────────────────────────────────────────────────
 setenv fdt_addr    0x02600000
 setenv kernel_addr 0x00480000
 
 echo "FoundationsOS: booting slot ${rauc_slot} (rootfs p${rootpart})"
 
-# Load DTB and kernel Image from FAT boot partition (mmcblk0p1)
 fatload mmc 0:1 ${fdt_addr}    bcm2837-rpi-3-b-plus.dtb
 fatload mmc 0:1 ${kernel_addr} Image
+
+# ─── Measured boot: extend PCR[8] with active slot name ─────────────────────
+if test "${tpm_started}" = "1"; then
+    tpm2 pcr_extend 8 sha256 ${rauc_slot}
+    echo "TPM2: PCR[8] extended with slot=${rauc_slot}"
+fi
 
 booti ${kernel_addr} - ${fdt_addr}
