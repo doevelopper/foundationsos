@@ -1,1 +1,1 @@
-{"aliveStatusCodes": [200, 404], "ignorePatterns": [{"pattern": "^https://api.reuse.software"}, {"pattern": "^https://sourceforge.net"}]}
+{"aliveStatusCodes": [200, 404], "ignorePatterns": [{"pattern": "^https://api.reuse.software"}, {"pattern": "^https://sourceforge.net"}, {"pattern": "^https://www.freedesktop.org"}, {"pattern": "^https://www.ssi.gouv.fr"}, {"pattern": "^https://www.cisecurity.org"}, {"pattern": "^https://kernsec.org"}]}

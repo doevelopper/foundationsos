@@ -364,9 +364,9 @@ jobs:
                 ERRORS=$((ERRORS+1))
                 continue
               fi
-              # Verify profile declares a path-based profile
-              if ! grep -qE '^/' "${f}"; then
-                echo "FAIL: ${f} missing path-based profile declaration"
+              # Verify profile declares a path-based or named profile
+              if ! grep -qE '^/|^profile ' "${f}"; then
+                echo "FAIL: ${f} missing profile declaration"
                 ERRORS=$((ERRORS+1))
                 continue
               fi
