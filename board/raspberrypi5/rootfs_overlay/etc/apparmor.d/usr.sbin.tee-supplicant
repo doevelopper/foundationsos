@@ -1,0 +1,51 @@
+# AppArmor profile for tee-supplicant (OP-TEE TEE supplicant daemon)
+# /usr/sbin/tee-supplicant
+#
+# tee-supplicant is the REE-side daemon that serves requests from OP-TEE OS
+# (BL32). It handles:
+#   - Trusted Application loading from /lib/optee_armtz/
+#   - Secure storage (via /var/lib/tee/ or RPMB)
+#   - REE filesystem access on behalf of TAs
+#
+# Enforcement mode: enforce
+
+abi <abi/3.0>,
+
+include <tunables/global>
+
+/usr/sbin/tee-supplicant flags=(enforce) {
+  include <abstractions/base>
+
+  # Capabilities required
+  capability dac_override,
+  capability dac_read_search,
+
+  # TEE device nodes (OP-TEE kernel driver)
+  /dev/tee[0-9]   rw,
+  /dev/teepriv[0-9] rw,
+
+  # Trusted Application storage
+  /lib/optee_armtz/         r,
+  /lib/optee_armtz/**       r,
+
+  # Secure storage backend
+  /var/lib/tee/             rw,
+  /var/lib/tee/**           rw,
+
+  # D-Bus (if using system bus for status)
+  /run/dbus/system_bus_socket rw,
+
+  # Allow reading system info
+  /proc/cpuinfo r,
+  /sys/firmware/devicetree/** r,
+
+  # Logging
+  /dev/log w,
+  /run/systemd/journal/socket w,
+
+  # Deny everything else
+  deny /etc/shadow r,
+  deny /proc/kcore r,
+  deny network inet,
+  deny network inet6,
+}

@@ -321,6 +321,99 @@ jobs:
       - name: Validate ADR-0010 exists
         run: test -f docs/adr/0010-ima-evm-full-enforcement.md
 
+  apparmor-validation:
+    name: AppArmor Validation
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install apparmor_parser
+        run: sudo apt-get install -y apparmor -qq
+
+      - name: Validate profile files present for both boards
+        run: |
+          EXPECTED_PROFILES=(
+            usr.sbin.tee-supplicant
+            usr.sbin.tpm2-abrmd
+            usr.bin.rauc
+            usr.bin.rauc-hawkbit-updater
+            usr.sbin.sshd
+            lib.systemd.systemd-networkd
+            lib.systemd.systemd-resolved
+            usr.sbin.luks-init
+            usr.sbin.evm-setup
+          )
+          for board in raspberrypi5 raspberrypi3bp; do
+            AADIR="board/${board}/rootfs_overlay/etc/apparmor.d"
+            for p in "${EXPECTED_PROFILES[@]}"; do
+              test -f "${AADIR}/${p}" || \
+                (echo "MISSING: ${AADIR}/${p}" && exit 1)
+            done
+            echo "${board}: all expected profiles present"
+          done
+
+      - name: Parse all AppArmor profiles (syntax check)
+        run: |
+          for board in raspberrypi5 raspberrypi3bp; do
+            AADIR="board/${board}/rootfs_overlay/etc/apparmor.d"
+            ERRORS=0
+            for f in "${AADIR}"/*; do
+              [[ -f "${f}" ]] || continue
+              apparmor_parser --parse "${f}" || { echo "PARSE FAIL: ${f}"; ERRORS=$((ERRORS+1)); }
+            done
+            [[ ${ERRORS} -eq 0 ]] || (echo "${board}: ${ERRORS} profile parse error(s)" && exit 1)
+            echo "${board}: all profiles parse OK"
+          done
+
+      - name: Validate apparmor-load.service for both boards
+        run: |
+          for board in raspberrypi5 raspberrypi3bp; do
+            SVC="board/${board}/rootfs_overlay/etc/systemd/system/apparmor-load.service"
+            test -f "${SVC}" || (echo "MISSING: ${SVC}" && exit 1)
+            grep -q "Before=sysinit.target" "${SVC}" || \
+              (echo "Missing Before=sysinit.target in ${SVC}" && exit 1)
+            grep -q "apparmor_parser" "${SVC}" || \
+              (echo "Missing apparmor_parser call in ${SVC}" && exit 1)
+            echo "${board}/apparmor-load.service: OK"
+          done
+
+      - name: Validate apparmor-check.sh syntax
+        run: |
+          test -f scripts/apparmor-check.sh || (echo "MISSING: scripts/apparmor-check.sh" && exit 1)
+          bash -n scripts/apparmor-check.sh
+          shellcheck scripts/apparmor-check.sh
+          echo "scripts/apparmor-check.sh: syntax OK"
+
+      - name: Validate profiles enforce deny rules for sensitive paths
+        run: |
+          for board in raspberrypi5 raspberrypi3bp; do
+            AADIR="board/${board}/rootfs_overlay/etc/apparmor.d"
+            # tpm2-abrmd must not allow /etc/tpm2/ (sealed key blobs)
+            grep -q "deny /etc/tpm2/" "${AADIR}/usr.sbin.tpm2-abrmd" || \
+              (echo "tpm2-abrmd missing deny /etc/tpm2/" && exit 1)
+            # sshd must deny TPM access
+            grep -q "deny /dev/tpm" "${AADIR}/usr.sbin.sshd" || \
+              (echo "sshd missing deny /dev/tpm*" && exit 1)
+            # rauc-hawkbit-updater must deny TPM
+            grep -q "deny /dev/tpm" "${AADIR}/usr.bin.rauc-hawkbit-updater" || \
+              (echo "rauc-hawkbit-updater missing deny /dev/tpm*" && exit 1)
+            # tee-supplicant must deny network
+            grep -q "deny network inet" "${AADIR}/usr.sbin.tee-supplicant" || \
+              (echo "tee-supplicant missing deny network" && exit 1)
+            echo "${board}: sensitive path deny rules OK"
+          done
+
+      - name: Validate BR2_PACKAGE_APPARMOR in both defconfigs
+        run: |
+          grep -q "BR2_PACKAGE_APPARMOR=y" configs/raspberrypi5_defconfig || \
+            (echo "Missing BR2_PACKAGE_APPARMOR=y in raspberrypi5_defconfig" && exit 1)
+          grep -q "BR2_PACKAGE_APPARMOR=y" configs/raspberrypi3bp_defconfig || \
+            (echo "Missing BR2_PACKAGE_APPARMOR=y in raspberrypi3bp_defconfig" && exit 1)
+          echo "defconfigs: BR2_PACKAGE_APPARMOR=y present"
+
+      - name: Validate ADR-0011 exists
+        run: test -f docs/adr/0011-apparmor-mac-profiles.md
+
   docs:
     name: Documentation Check
     runs-on: ubuntu-22.04

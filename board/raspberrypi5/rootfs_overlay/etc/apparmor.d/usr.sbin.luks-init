@@ -1,0 +1,60 @@
+# AppArmor profile for luks-init.sh (LUKS initialization service)
+# /usr/sbin/luks-init.sh
+#
+# Runs as root under luks-data.service before data.mount.
+# Needs: TPM access (via tpm2-abrmd), cryptsetup, mkfs.ext4.
+# Enforcement mode: enforce
+
+abi <abi/3.0>,
+
+include <tunables/global>
+
+/usr/sbin/luks-init.sh flags=(enforce) {
+  include <abstractions/base>
+  include <abstractions/bash>
+
+  # Capabilities
+  capability sys_admin,
+  capability dac_override,
+  capability mknod,
+
+  # Block device (data partition = p4)
+  /dev/mmcblk0p4          rw,
+  /dev/mapper/            r,
+  /dev/mapper/luks-data   rw,
+
+  # Sealed key blobs
+  /etc/tpm2/luks-data.pub  r,
+  /etc/tpm2/luks-data.priv r,
+  /etc/tpm2/luks-data.pub  w,   # written on first-boot seal
+  /etc/tpm2/luks-data.priv w,
+
+  # Runtime key scratch space (tmpfs)
+  /run/luks/              rw,
+  /run/luks/**            rw,
+
+  # tpm2 tools
+  /usr/bin/tpm2_*         ix,
+
+  # cryptsetup
+  /usr/sbin/cryptsetup    ix,
+  /usr/sbin/luks-tpm-seal.sh ix,
+
+  # mkfs
+  /usr/sbin/mkfs.ext4     ix,
+  /sbin/mkfs.ext4         ix,
+  /usr/sbin/wipefs        ix,
+
+  # D-Bus (tpm2-abrmd)
+  /run/dbus/system_bus_socket rw,
+
+  # Logging
+  /run/systemd/journal/socket w,
+  /dev/log w,
+
+  # Deny
+  deny /etc/shadow r,
+  deny /proc/kcore r,
+  deny network inet,
+  deny network inet6,
+}

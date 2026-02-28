@@ -9,9 +9,84 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-### Planned (v0.7.0)
-- AppArmor MAC profiles for all system services (tee-supplicant, tpm2-abrmd,
-  rauc, sshd, systemd-networkd, systemd-resolved)
+### Planned (v1.0.0)
+- Production hardening: unconfined-process catch-all AppArmor policy,
+  EVM mode 6 (HMAC + signatures), read-only rootfs mount enforcement,
+  final security audit
+
+---
+
+## [0.7.0] — 2026-02-28
+
+**AppArmor MAC profiles** in **enforce mode** for all privileged system
+services on both RPi5 and RPi3B+. Each service is confined to the minimal
+file, capability, and network access it actually requires. Sensitive paths
+(`/dev/tpm*`, `/etc/tpm2/`, `/etc/shadow`, `/proc/kcore`) are explicitly
+denied for all services that do not need them. Profiles are loaded by
+`apparmor-load.service` before `sysinit.target`.
+
+### Added
+
+**AppArmor profiles — both boards**
+(`board/{raspberrypi5,raspberrypi3bp}/rootfs_overlay/etc/apparmor.d/`)
+
+| Profile | Confined service | Key restrictions |
+|---|---|---|
+| `usr.sbin.tee-supplicant` | OP-TEE REE supplicant | `/dev/tee*`, `/lib/optee_armtz/`, `/var/lib/tee/`; **deny network** |
+| `usr.sbin.tpm2-abrmd` | TPM2 resource manager | `/dev/tpm*`, D-Bus `com.intel.tss2.Tabrmd`; **deny `/etc/tpm2/`** |
+| `usr.bin.rauc` | RAUC OTA daemon | mmcblk0 partitions, `/etc/rauc/`, `/data/rauc.db`; `sys_admin` |
+| `usr.bin.rauc-hawkbit-updater` | hawkBit updater | Outbound TCP only; **deny TPM** |
+| `usr.sbin.sshd` | OpenSSH server | TCP bind 22, pty, authorized_keys, child-shell sub-profile; **deny TPM** |
+| `lib.systemd.systemd-networkd` | systemd network manager | `net_admin`, netlink, network config dirs; **deny TPM** |
+| `lib.systemd.systemd-resolved` | systemd DNS stub | DNS sockets, D-Bus `org.freedesktop.resolve1`; **deny TPM** |
+| `usr.sbin.luks-init` | LUKS init script | `/dev/mmcblk0p4`, `/etc/tpm2/luks-data.*`, tpm2 tools; **deny network** |
+| `usr.sbin.evm-setup` | EVM HMAC setup script | `/etc/tpm2/evm-hmac.*`, `keyctl`, `/sys/kernel/security/evm`; **deny network** |
+
+**systemd — AppArmor profile loader (both boards)**
+- `apparmor-load.service` — `Type=oneshot`, `Before=sysinit.target`,
+  `ConditionSecurity=apparmor`; calls `apparmor_parser --replace
+  --write-cache /etc/apparmor.d`; also handles stop (profile removal).
+  Ensures all profiles are active before any confined process starts.
+
+**AppArmor validation script**
+- `scripts/apparmor-check.sh` — `--parse-only --dir <dir>`: runs
+  `apparmor_parser --parse` on each profile (CI / build use). Default
+  (target) mode: queries `/sys/kernel/security/apparmor` and reports
+  loaded profile status and any profiles in complain mode.
+
+**Architecture documentation**
+- `docs/adr/0011-apparmor-mac-profiles.md` — threat model, profile design
+  principles, per-service rule rationale, service ordering diagram,
+  D-Bus mediation note, OTA update considerations, alternatives considered.
+
+**CI — AppArmor validation job**
+- `.github/workflows/ci.yml`: new `apparmor-validation` job installs
+  `apparmor_parser`, validates all 9 profiles present for both boards,
+  parses all profiles for syntax, validates `apparmor-load.service`
+  ordering, ShellCheck `apparmor-check.sh`, deny-rule spot checks,
+  defconfig `BR2_PACKAGE_APPARMOR=y`, ADR presence.
+
+### Changed
+
+**Buildroot defconfigs (both boards)**
+- Added `BR2_PACKAGE_APPARMOR=y` — builds `apparmor_parser` and `aa-status`
+  userspace tools into the target image.
+
+**post-build.sh (both boards)**
+- Creates `/etc/apparmor.d/cache/` directory (chmod 755) so that
+  `apparmor_parser --write-cache` has a writable cache location at boot.
+
+### Security Notes for v0.7.0
+
+- All profiles use `flags=(enforce)` — there are no complain-mode profiles
+  in the production image. Any access violation is **denied and logged**
+  to the kernel audit subsystem (`CONFIG_AUDIT=y`).
+- Processes without a matching profile are **unconfined** (AppArmor default).
+  The `aa-status` output should be audited after first boot. A catch-all
+  unconfined-process policy will be added at v1.0.0.
+- The AppArmor D-Bus mediation rules (`dbus (send, receive, bind)`) require
+  the kernel dbus LSM hook. Profiles degrade gracefully on kernels without
+  it but log a warning.
 
 ---
 
@@ -563,7 +638,8 @@ _Baseline Buildroot image booting on Raspberry Pi 3B+ (AArch64 64-bit mode)._
 
 ---
 
-[Unreleased]: https://github.com/doevelopper/foundationsos/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/doevelopper/foundationsos/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/doevelopper/foundationsos/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/doevelopper/foundationsos/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/doevelopper/foundationsos/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/doevelopper/foundationsos/compare/v0.3.0...v0.4.0

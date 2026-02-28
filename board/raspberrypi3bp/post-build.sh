@@ -75,4 +75,9 @@ else
     echo "[post-build] WARN: Skipping IMA signing (key or evmctl not found)."
 fi
 
+# ─── AppArmor profiles (v0.7.0) ──────────────────────────────────────────────
+mkdir -p "${TARGET_DIR}/etc/apparmor.d/cache"
+chmod 755 "${TARGET_DIR}/etc/apparmor.d/cache"
+echo "[post-build] AppArmor profile cache directory created."
+
 echo "[post-build] Root filesystem hardening complete (raspberrypi3bp)."

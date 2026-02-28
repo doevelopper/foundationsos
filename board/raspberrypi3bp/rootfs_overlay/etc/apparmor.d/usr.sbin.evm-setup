@@ -1,0 +1,54 @@
+# AppArmor profile for evm-setup.sh (EVM HMAC key loader)
+# /usr/sbin/evm-setup.sh
+#
+# Runs under evm-setup.service (Before=sysinit.target).
+# Needs: TPM access (via tpm2-abrmd), keyctl.
+# Enforcement mode: enforce
+
+abi <abi/3.0>,
+
+include <tunables/global>
+
+/usr/sbin/evm-setup.sh flags=(enforce) {
+  include <abstractions/base>
+  include <abstractions/bash>
+
+  # Capabilities
+  capability dac_override,
+  # Needed to write /sys/kernel/security/evm
+  capability sys_admin,
+  capability mac_admin,
+
+  # Sealed EVM key blobs
+  /etc/tpm2/evm-hmac.pub  r,
+  /etc/tpm2/evm-hmac.priv r,
+
+  # Runtime scratch (tmpfs)
+  /run/evm/               rw,
+  /run/evm/**             rw,
+
+  # Write EVM activation
+  /sys/kernel/security/evm rw,
+
+  # tpm2 tools
+  /usr/bin/tpm2_*         ix,
+
+  # keyctl
+  /usr/bin/keyctl         ix,
+
+  # shred
+  /usr/bin/shred          ix,
+
+  # D-Bus (tpm2-abrmd)
+  /run/dbus/system_bus_socket rw,
+
+  # Logging
+  /run/systemd/journal/socket w,
+  /dev/log w,
+
+  # Deny
+  deny /etc/shadow r,
+  deny /proc/kcore r,
+  deny network inet,
+  deny network inet6,
+}

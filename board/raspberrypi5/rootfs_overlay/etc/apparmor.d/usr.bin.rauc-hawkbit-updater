@@ -1,0 +1,47 @@
+# AppArmor profile for rauc-hawkbit-updater
+# /usr/bin/rauc-hawkbit-updater
+#
+# Polls a hawkBit server for available updates and triggers RAUC.
+# Needs: network (HTTPS to hawkBit), D-Bus to RAUC, hawkbit.conf.
+#
+# Enforcement mode: enforce
+
+abi <abi/3.0>,
+
+include <tunables/global>
+
+/usr/bin/rauc-hawkbit-updater flags=(enforce) {
+  include <abstractions/base>
+  include <abstractions/openssl>
+  include <abstractions/nameservice>
+
+  # Configuration
+  /etc/rauc/hawkbit.conf    r,
+  /etc/ssl/certs/           r,
+  /etc/ssl/certs/**         r,
+
+  # State / lock file
+  /var/lib/rauc-hawkbit/    rw,
+  /var/lib/rauc-hawkbit/**  rw,
+  /run/rauc-hawkbit.pid     rw,
+
+  # D-Bus: call de.pengutronix.rauc methods
+  /run/dbus/system_bus_socket rw,
+  dbus (send, receive)
+       bus=system
+       name="de.pengutronix.rauc",
+
+  # Network: outbound HTTPS only (TCP 443)
+  network inet  stream,
+  network inet6 stream,
+
+  # Logging
+  /dev/log w,
+  /run/systemd/journal/socket w,
+
+  # Deny
+  deny /etc/shadow r,
+  deny /proc/kcore r,
+  deny /dev/tpm* r,
+  deny /etc/tpm2/ r,
+}

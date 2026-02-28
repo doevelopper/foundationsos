@@ -1,0 +1,64 @@
+# AppArmor profile for rauc (RAUC A/B OTA update daemon)
+# /usr/bin/rauc
+#
+# RAUC needs access to: block devices (slot partitions), the RAUC
+# system.conf, bundle signature verification (openssl), D-Bus, and
+# the RAUC status database (/data/rauc.db).
+#
+# Enforcement mode: enforce
+
+abi <abi/3.0>,
+
+include <tunables/global>
+
+/usr/bin/rauc flags=(enforce) {
+  include <abstractions/base>
+  include <abstractions/openssl>
+
+  # Capabilities required for partition operations
+  capability sys_admin,
+  capability dac_override,
+  capability dac_read_search,
+
+  # RAUC configuration
+  /etc/rauc/system.conf    r,
+  /etc/rauc/keyring.pem    r,
+  /etc/rauc/*.pem          r,
+
+  # RAUC status database (on encrypted /data partition)
+  /data/rauc.db           rw,
+  /data/rauc.db-journal   rw,
+
+  # Slot partitions (A/B rootfs + boot)
+  /dev/mmcblk0p[1-4]     rw,
+  /dev/mmcblk0            r,
+
+  # Bundle download cache
+  /tmp/rauc-*             rw,
+  /var/cache/rauc/        rw,
+  /var/cache/rauc/**      rw,
+
+  # D-Bus: own de.pengutronix.rauc name
+  /run/dbus/system_bus_socket rw,
+  dbus (send, receive, bind)
+       bus=system
+       name="de.pengutronix.rauc",
+
+  # Certificate verification
+  /etc/ssl/certs/         r,
+  /etc/ssl/certs/**       r,
+
+  # Hawkbit updater state
+  /var/lib/rauc/          rw,
+  /var/lib/rauc/**        rw,
+
+  # Logging
+  /dev/log w,
+  /run/systemd/journal/socket w,
+
+  # Deny
+  deny /etc/shadow r,
+  deny /proc/kcore r,
+  deny /etc/tpm2/ r,
+  deny /etc/ima/  r,
+}

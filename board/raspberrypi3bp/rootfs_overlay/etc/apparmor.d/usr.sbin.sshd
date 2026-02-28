@@ -1,0 +1,86 @@
+# AppArmor profile for sshd (OpenSSH server)
+# /usr/sbin/sshd
+#
+# Enforcement mode: enforce
+
+abi <abi/3.0>,
+
+include <tunables/global>
+
+/usr/sbin/sshd flags=(enforce) {
+  include <abstractions/base>
+  include <abstractions/authentication>
+  include <abstractions/nameservice>
+  include <abstractions/openssl>
+
+  # Capabilities
+  capability net_bind_service,
+  capability setuid,
+  capability setgid,
+  capability audit_write,
+  capability chown,
+  capability dac_read_search,
+  capability sys_chroot,
+  capability sys_tty_config,
+
+  # Network: listen on TCP 22
+  network inet  stream,
+  network inet6 stream,
+
+  # SSH host keys and config
+  /etc/ssh/              r,
+  /etc/ssh/**            r,
+  /etc/ssh/ssh_host_*    r,
+
+  # User home directories (key-based auth)
+  @{HOME}/.ssh/          r,
+  @{HOME}/.ssh/authorized_keys r,
+
+  # PAM / NSS
+  /etc/pam.d/            r,
+  /etc/pam.d/**          r,
+  /etc/nsswitch.conf     r,
+  /etc/passwd            r,
+  /etc/group             r,
+  /etc/shadow            r,   # password authentication
+  /etc/login.defs        r,
+
+  # Pty / tty
+  /dev/pts/[0-9]*         rw,
+  /dev/ptmx               rw,
+  /dev/tty                rw,
+  /dev/urandom            r,
+
+  # Privilege separation
+  /run/sshd.pid           rw,
+  /run/sshd/              rw,
+  /run/sshd/**            rw,
+  /var/empty/             r,
+
+  # Logging
+  /dev/log w,
+  /run/systemd/journal/socket w,
+  /var/log/auth.log       w,
+
+  # Executing child shells (after auth)
+  /bin/bash               Cx -> child_shell,
+  /bin/sh                 Cx -> child_shell,
+
+  profile child_shell {
+    include <abstractions/base>
+    include <abstractions/bash>
+    /bin/** ix,
+    /usr/bin/** ix,
+    /usr/sbin/** ix,
+    /home/** rw,
+    /tmp/** rw,
+    /dev/pts/[0-9]* rw,
+    /dev/tty rw,
+  }
+
+  # Deny
+  deny /proc/kcore r,
+  deny /dev/tpm* rw,
+  deny /etc/tpm2/ r,
+  deny /etc/ima/ r,
+}

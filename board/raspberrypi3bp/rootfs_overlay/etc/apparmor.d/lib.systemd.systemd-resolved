@@ -1,0 +1,56 @@
+# AppArmor profile for systemd-resolved
+# /lib/systemd/systemd-resolved
+#
+# Stub DNS resolver that handles /etc/resolv.conf and local DNS queries.
+# Enforcement mode: enforce
+
+abi <abi/3.0>,
+
+include <tunables/global>
+
+/lib/systemd/systemd-resolved flags=(enforce) {
+  include <abstractions/base>
+  include <abstractions/nameservice>
+
+  # Capabilities
+  capability net_bind_service,
+  capability dac_override,
+  capability setuid,
+  capability setgid,
+
+  # Network: DNS (UDP/TCP 53, 853), mDNS (UDP 5353)
+  network inet  dgram,
+  network inet  stream,
+  network inet6 dgram,
+  network inet6 stream,
+  network netlink raw,
+
+  # Configuration
+  /etc/systemd/resolved.conf   r,
+  /etc/systemd/resolved.conf.d/ r,
+  /etc/systemd/resolved.conf.d/** r,
+  /etc/resolv.conf             r,
+  /etc/hosts                   r,
+  /run/systemd/resolve/        rw,
+  /run/systemd/resolve/**      rw,
+
+  # D-Bus
+  /run/dbus/system_bus_socket rw,
+  dbus (send, receive, bind)
+       bus=system
+       name="org.freedesktop.resolve1",
+
+  # Logging
+  /run/systemd/journal/socket w,
+  /dev/log w,
+
+  # Trust anchors / DNSSEC
+  /etc/ssl/certs/  r,
+  /etc/ssl/certs/** r,
+
+  # Deny
+  deny /etc/shadow r,
+  deny /proc/kcore r,
+  deny /dev/tpm* rw,
+  deny /etc/tpm2/ r,
+}

@@ -1,0 +1,28 @@
+[Unit]
+Description=Load AppArmor profiles
+Documentation=https://github.com/doevelopper/foundationsos/docs/adr/0011-apparmor-mac-profiles.md
+DefaultDependencies=no
+# Must load before any confined process starts
+Before=sysinit.target local-fs.target
+After=systemd-remount-fs.service
+
+ConditionSecurity=apparmor
+ConditionPathExists=/sys/kernel/security/apparmor
+ConditionPathExists=/etc/apparmor.d
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# Load all profiles in enforce mode; abort on any parse error
+ExecStart=/usr/sbin/apparmor_parser --replace --write-cache \
+    /etc/apparmor.d
+
+ExecStop=/usr/sbin/apparmor_parser --remove \
+    /etc/apparmor.d
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=sysinit.target

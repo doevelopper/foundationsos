@@ -82,4 +82,11 @@ else
     echo "  Run scripts/generate-ima-keys.sh and ensure host-ima-evm-utils is built."
 fi
 
+# ─── AppArmor profiles (v0.7.0) ──────────────────────────────────────────────
+# Profiles are installed via rootfs_overlay (etc/apparmor.d/).
+# Create the cache directory so apparmor_parser --write-cache works at boot.
+mkdir -p "${TARGET_DIR}/etc/apparmor.d/cache"
+chmod 755 "${TARGET_DIR}/etc/apparmor.d/cache"
+echo "[post-build] AppArmor profile cache directory created."
+
 echo "[post-build] Root filesystem hardening complete."

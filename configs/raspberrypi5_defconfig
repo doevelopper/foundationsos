@@ -1,6 +1,6 @@
 # FoundationsOS Buildroot defconfig — Raspberry Pi 5 (BCM2712)
 #
-# v0.6.0 — IMA/EVM full enforcement (signed file hashes + EVM HMAC).
+# v0.7.0 — AppArmor MAC profiles for all system services.
 #
 # Security stack included at this milestone:
 #   - ARM Trusted Firmware-A BL31 (EL3 secure monitor, armstub)
@@ -11,7 +11,7 @@
 #   - systemd init with hardened service units
 #   - IMA/EVM full enforcement: RSA-4096 signed file hashes + EVM HMAC
 #   - dm-crypt / LUKS2 encrypted storage (TPM-sealed key)
-#   - AppArmor MAC, seccomp, kernel lockdown
+#   - AppArmor MAC profiles enforced for all system services
 #
 # Boot chain (EL levels):
 #   VideoCore firmware → bl31.bin (TF-A BL31, EL3) → OP-TEE (BL32, S-EL1)
@@ -137,6 +137,8 @@ BR2_PACKAGE_LIBSECCOMP=y
 BR2_PACKAGE_ATTR=y
 BR2_PACKAGE_KEYUTILS=y
 BR2_PACKAGE_IMA_EVM_UTILS=y
+# AppArmor v0.7.0: userspace tools for profile loading and management
+BR2_PACKAGE_APPARMOR=y
 
 # ─── systemd ───────────────────────────────────────────────────────────────────
 BR2_PACKAGE_SYSTEMD=y
