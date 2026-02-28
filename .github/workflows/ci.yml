@@ -360,7 +360,7 @@ jobs:
             ERRORS=0
             for f in "${AADIR}"/*; do
               [[ -f "${f}" ]] || continue
-              apparmor_parser --base /etc/apparmor.d --include /etc/apparmor.d --parse "${f}" || { echo "PARSE FAIL: ${f}"; ERRORS=$((ERRORS+1)); }
+              apparmor_parser -b /etc/apparmor.d -I /etc/apparmor.d -p "${f}" || { echo "PARSE FAIL: ${f}"; ERRORS=$((ERRORS+1)); }
             done
             [[ ${ERRORS} -eq 0 ]] || (echo "${board}: ${ERRORS} profile parse error(s)" && exit 1)
             echo "${board}: all profiles parse OK"

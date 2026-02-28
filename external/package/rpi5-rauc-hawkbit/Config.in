@@ -1,0 +1,8 @@
+config BR2_PACKAGE_RPI5_RAUC_HAWKBIT
+bool "rpi5-rauc-hawkbit"
+depends on BR2_PACKAGE_RAUC
+depends on BR2_PACKAGE_RAUC_HAWKBIT_UPDATER
+help
+  FoundationsOS RAUC hawkBit integration package.
+  Installs the hawkBit OTA updater configuration for
+  secure over-the-air updates via an Eclipse hawkBit server.
