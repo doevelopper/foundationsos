@@ -1,0 +1,15 @@
+[Unit]
+Description=Data Partition (/data)
+Documentation=https://github.com/doevelopper/foundationsos/blob/main/docs/adr/0009-luks-tpm-sealed-key.md
+# Depends on luks-data.service to open the LUKS container first.
+After=luks-data.service
+Requires=luks-data.service
+
+[Mount]
+What=/dev/mapper/luks-data
+Where=/data
+Type=ext4
+Options=noatime,nodiratime,errors=remount-ro
+
+[Install]
+WantedBy=multi-user.target

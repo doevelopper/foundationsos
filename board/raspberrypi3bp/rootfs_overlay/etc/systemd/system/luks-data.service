@@ -1,0 +1,22 @@
+[Unit]
+Description=Open LUKS2 Encrypted Data Partition
+Documentation=https://github.com/doevelopper/foundationsos/blob/main/docs/adr/0009-luks-tpm-sealed-key.md
+DefaultDependencies=no
+After=systemd-udev-settle.service tpm2-abrmd.service
+Before=data.mount local-fs.target
+Requires=tpm2-abrmd.service
+ConditionPathExists=/dev/mmcblk0p4
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/luks-init.sh
+ExecStop=-/bin/rm -f /run/luks/data.key
+StandardOutput=journal
+StandardError=journal
+PrivateTmp=no
+ProtectSystem=no
+PrivateDevices=no
+
+[Install]
+WantedBy=data.mount

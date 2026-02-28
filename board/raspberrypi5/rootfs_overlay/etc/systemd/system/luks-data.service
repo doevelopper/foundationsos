@@ -1,0 +1,27 @@
+[Unit]
+Description=Open LUKS2 Encrypted Data Partition
+Documentation=https://github.com/doevelopper/foundationsos/blob/main/docs/adr/0009-luks-tpm-sealed-key.md
+# Must run before the data partition is mounted.
+# Requires TPM access daemon to be available for key unsealing.
+DefaultDependencies=no
+After=systemd-udev-settle.service tpm2-abrmd.service
+Before=data.mount local-fs.target
+Requires=tpm2-abrmd.service
+# Only run if the data partition block device is present
+ConditionPathExists=/dev/mmcblk0p4
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/luks-init.sh
+# Clean up any stale key on stop/failure
+ExecStop=-/bin/rm -f /run/luks/data.key
+StandardOutput=journal
+StandardError=journal
+# Hardening — the service needs access to /dev and /run
+PrivateTmp=no
+ProtectSystem=no
+PrivateDevices=no
+
+[Install]
+WantedBy=data.mount

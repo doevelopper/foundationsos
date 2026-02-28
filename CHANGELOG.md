@@ -9,8 +9,103 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-### Planned (v0.5.0)
-- Full disk encryption: LUKS v2 with key sealed to TPM PCR[0,4,7,8] policy (sealing key at 0x81000003)
+### Planned (v0.6.0)
+- IMA/EVM full enforcement: signed file hashes, EVM HMAC keys sealed to TPM
+
+---
+
+## [0.5.0] — 2026-02-28
+
+Full disk encryption of the `/data` partition using **LUKS2** with a random
+64-byte key **sealed to the TPM 2.0** under a PCR[0,4,7,8] authorization
+policy. The key is never stored in plaintext on any persistent storage medium.
+First-boot provisioning is fully automated; subsequent boots unseal the key
+from the TPM in under one second.
+
+### Added
+
+**Kernel — hardware AES and XTS cipher support (both boards)**
+- `board/raspberrypi5/linux-hardened.config`: `CONFIG_CRYPTO_XTS=y`,
+  `CONFIG_CRYPTO_AES_ARM64=y`, `CONFIG_CRYPTO_SHA256=y`,
+  `CONFIG_CRYPTO_SHA512=y` — hardware-accelerated AES-XTS for LUKS2
+  (`aes-xts-plain64` cipher with 256-bit key)
+- `board/raspberrypi3bp/linux-hardened.config`: same additions
+
+**TPM2 LUKS seal/unseal script**
+- `scripts/luks-tpm-seal.sh` — seals/unseals a LUKS passphrase into a TPM2
+  data-object stored under the SRK (0x81000001).
+  `seal <keyfile>`: creates a PCR[sha256:0,4,7,8]-bound data object, writes
+  `public` and `private` blobs to `/etc/tpm2/luks-data.{pub,priv}`.
+  `unseal <output>`: starts a policy session, verifies current PCRs match the
+  recorded policy, loads and unseals the object → `output`. Installed to
+  `/usr/sbin/luks-tpm-seal.sh` by `post-build.sh`.
+
+**First-boot LUKS initialization script**
+- `scripts/luks-init.sh` — called by `luks-data.service` on every boot.
+  First boot (no LUKS header on `/dev/mmcblk0p4`): formats as LUKS2
+  (`aes-xts-plain64`, `argon2id`, 2000 ms iter-time), opens container,
+  creates ext4, seals key to TPM, shreds runtime key.
+  Subsequent boots: unseals key from TPM, opens LUKS, shreds runtime key.
+  Installed to `/usr/sbin/luks-init.sh` by `post-build.sh`.
+
+**systemd — LUKS open service (both boards)**
+- `board/raspberrypi5/rootfs_overlay/etc/systemd/system/luks-data.service`
+  — `Type=oneshot RemainAfterExit=yes`; `Before=data.mount`;
+  `Requires=tpm2-abrmd.service`; calls `luks-init.sh`; cleans up
+  `/run/luks/data.key` on stop
+- `board/raspberrypi3bp/rootfs_overlay/etc/systemd/system/luks-data.service`
+  — identical
+
+**systemd — data partition mount unit (both boards)**
+- `board/raspberrypi5/rootfs_overlay/etc/systemd/system/data.mount`
+  — `What=/dev/mapper/luks-data Where=/data Type=ext4`;
+  `Requires=luks-data.service After=luks-data.service`;
+  `WantedBy=multi-user.target`
+- `board/raspberrypi3bp/rootfs_overlay/etc/systemd/system/data.mount`
+  — identical
+
+**crypttab (both boards)**
+- `board/raspberrypi5/rootfs_overlay/etc/crypttab` — reference entry for
+  manual recovery; normal boot uses `luks-data.service` instead of
+  `systemd-cryptsetup`
+- `board/raspberrypi3bp/rootfs_overlay/etc/crypttab` — same
+
+**Architecture documentation**
+- `docs/adr/0009-luks-tpm-sealed-key.md` — full threat model, cryptographic
+  parameters (LUKS2 aes-xts-plain64 argon2id), TPM key hierarchy under SRK,
+  boot-time flow diagram, first-boot provisioning sequence, recovery
+  procedure (re-seal after firmware update), alternatives considered
+
+**CI — LUKS validation job**
+- `.github/workflows/ci.yml`: new `luks-validation` job validates crypttab
+  presence, service ordering (`luks-data Before=data.mount`, `data.mount
+  Requires=luks-data`), script syntax, ShellCheck, post-build.sh LUKS
+  entries, kernel cipher options, ADR presence
+
+### Changed
+
+**Buildroot defconfigs (both boards)**
+- Added `BR2_PACKAGE_UTIL_LINUX=y` + `BR2_PACKAGE_UTIL_LINUX_BINARIES=y` —
+  provides `wipefs` (partition detection) and other utilities used by
+  `luks-init.sh`
+
+**post-build.sh (both boards)**
+- Creates `/data` mountpoint in `TARGET_DIR` (chmod 750)
+- Installs `luks-init.sh` and `luks-tpm-seal.sh` to `/usr/sbin/` (mode 750)
+- Creates `/etc/tpm2/` directory (chmod 700) for sealed key storage
+
+### Security Notes for v0.5.0
+
+- The 64-byte LUKS passphrase is generated from `/dev/urandom` and **never
+  written to any persistent storage in plaintext**. After sealing to the TPM
+  it exists only in the TPM's non-volatile storage.
+- PCR[8] includes the active RAUC slot (`a` or `b`); switching slots via a
+  normal RAUC OTA update does NOT change the active slot of the running system
+  so the unseal succeeds on the next boot of the same slot. After a RAUC
+  update and switch to the new slot, PCR[8] will differ — a **re-seal step**
+  is required after applying an OTA update (future v0.6.0 post-install hook).
+- A recovery key slot should be added at manufacturing time using
+  `cryptsetup luksAddKey` with an offline backup key (see ADR-0009).
 
 ---
 
@@ -370,7 +465,8 @@ _Baseline Buildroot image booting on Raspberry Pi 3B+ (AArch64 64-bit mode)._
 
 ---
 
-[Unreleased]: https://github.com/doevelopper/foundationsos/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/doevelopper/foundationsos/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/doevelopper/foundationsos/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/doevelopper/foundationsos/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/doevelopper/foundationsos/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/doevelopper/foundationsos/compare/v0.1.1...v0.2.0

@@ -1,6 +1,6 @@
 # FoundationsOS Buildroot defconfig — Raspberry Pi 5 (BCM2712)
 #
-# v0.4.0 — RAUC A/B OTA with hawkBit cloud connector.
+# v0.5.0 — Full disk encryption (LUKS2 with TPM-sealed key).
 #
 # Security stack included at this milestone:
 #   - ARM Trusted Firmware-A BL31 (EL3 secure monitor, armstub)
@@ -125,6 +125,9 @@ BR2_PACKAGE_CRYPTSETUP=y
 BR2_PACKAGE_LVM2=y
 BR2_PACKAGE_E2FSPROGS=y
 BR2_PACKAGE_DOSFSTOOLS=y
+# LUKS v0.5.0: wipefs (util-linux) needed for partition detection
+BR2_PACKAGE_UTIL_LINUX=y
+BR2_PACKAGE_UTIL_LINUX_BINARIES=y
 
 # ─── Security Tools ────────────────────────────────────────────────────────────
 BR2_PACKAGE_OPENSSL=y

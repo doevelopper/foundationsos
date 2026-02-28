@@ -1,0 +1,12 @@
+# /etc/crypttab — LUKS device mapping table
+#
+# Format: <name>  <device>  <keyfile>  <options>
+#
+# The data partition is opened by luks-data.service using a TPM-unsealed key.
+# This entry is provided for reference and manual recovery use.
+#
+# For manual recovery (after firmware change breaks TPM PCR policy):
+#   1. Boot from trusted recovery media
+#   2. Re-seal with new PCRs: scripts/luks-tpm-seal.sh seal <keyfile>
+
+# luks-data  /dev/mmcblk0p4  none  luks

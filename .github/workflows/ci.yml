@@ -168,6 +168,74 @@ jobs:
         run: |
           shellcheck scripts/build-rauc-bundle.sh scripts/test-rauc-bundle.sh
 
+  luks-validation:
+    name: LUKS Configuration Validation
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y shellcheck || true
+
+      - name: Validate crypttab files
+        run: |
+          for board in raspberrypi5 raspberrypi3bp; do
+            F="board/${board}/rootfs_overlay/etc/crypttab"
+            test -f "${F}" || (echo "MISSING: ${F}" && exit 1)
+            echo "${board}/crypttab present"
+          done
+
+      - name: Validate LUKS systemd services
+        run: |
+          for board in raspberrypi5 raspberrypi3bp; do
+            for svc in luks-data data.mount; do
+              F="board/${board}/rootfs_overlay/etc/systemd/system/${svc}"
+              test -f "${F}" || (echo "MISSING: ${F}" && exit 1)
+              echo "${board}/${svc} present"
+            done
+            # Check luks-data.service ordering
+            grep -q "Before=data.mount" "board/${board}/rootfs_overlay/etc/systemd/system/luks-data.service"
+            grep -q "tpm2-abrmd.service" "board/${board}/rootfs_overlay/etc/systemd/system/luks-data.service"
+            # Check data.mount requires luks-data
+            grep -q "Requires=luks-data.service" "board/${board}/rootfs_overlay/etc/systemd/system/data.mount"
+            echo "${board}: service ordering OK"
+          done
+
+      - name: Validate LUKS scripts exist and have correct syntax
+        run: |
+          test -f scripts/luks-init.sh     || (echo "MISSING: scripts/luks-init.sh" && exit 1)
+          test -f scripts/luks-tpm-seal.sh || (echo "MISSING: scripts/luks-tpm-seal.sh" && exit 1)
+          bash -n scripts/luks-init.sh
+          bash -n scripts/luks-tpm-seal.sh
+          echo "luks-init.sh and luks-tpm-seal.sh syntax OK"
+
+      - name: ShellCheck LUKS scripts
+        run: |
+          shellcheck scripts/luks-init.sh scripts/luks-tpm-seal.sh
+
+      - name: Validate post-build.sh installs LUKS scripts
+        run: |
+          grep -q "luks-init.sh" board/raspberrypi5/post-build.sh
+          grep -q "luks-tpm-seal.sh" board/raspberrypi5/post-build.sh
+          grep -q "mkdir.*data" board/raspberrypi5/post-build.sh
+          grep -q "luks-init.sh" board/raspberrypi3bp/post-build.sh
+          echo "post-build.sh LUKS entries OK"
+
+      - name: Validate kernel fragments include LUKS ciphers
+        run: |
+          for board in raspberrypi5 raspberrypi3bp; do
+            FRAG="board/${board}/linux-hardened.config"
+            grep -q "CONFIG_DM_CRYPT=y" "${FRAG}"
+            grep -q "CONFIG_CRYPTO_XTS=y" "${FRAG}"
+            grep -q "CONFIG_CRYPTO_AES_ARM64=y" "${FRAG}"
+            echo "${board}/linux-hardened.config LUKS cipher options OK"
+          done
+
+      - name: Validate ADR-0009 exists
+        run: test -f docs/adr/0009-luks-tpm-sealed-key.md
+
   docs:
     name: Documentation Check
     runs-on: ubuntu-22.04

@@ -42,4 +42,21 @@ if [ -f "${BOARD_DIR}/rootfs_overlay/etc/ima/ima-policy" ]; then
         "${TARGET_DIR}/etc/ima/ima-policy"
 fi
 
+# ─── LUKS / encrypted data partition (v0.5.0) ────────────────────────────────
+# Create /data mountpoint for the LUKS-encrypted data partition.
+# The actual LUKS formatting and TPM key sealing happen on first boot via
+# luks-data.service → luks-init.sh.
+mkdir -p "${TARGET_DIR}/data"
+chmod 750 "${TARGET_DIR}/data"
+
+# Install LUKS helper scripts to /usr/sbin/
+install -D -m 750 "${BOARD_DIR}/../../scripts/luks-init.sh" \
+    "${TARGET_DIR}/usr/sbin/luks-init.sh"
+install -D -m 750 "${BOARD_DIR}/../../scripts/luks-tpm-seal.sh" \
+    "${TARGET_DIR}/usr/sbin/luks-tpm-seal.sh"
+
+# Create /etc/tpm2 directory for sealed key storage
+mkdir -p "${TARGET_DIR}/etc/tpm2"
+chmod 700 "${TARGET_DIR}/etc/tpm2"
+
 echo "[post-build] Root filesystem hardening complete."
