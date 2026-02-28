@@ -80,7 +80,7 @@ else
     echo "[aa-check] aa-status not found; reading directly from securityfs..."
     echo "  Loaded profiles:"
     cat /sys/kernel/security/apparmor/profiles 2>/dev/null || \
-        ls /sys/kernel/security/apparmor/ | sed 's/^/    /'
+        find /sys/kernel/security/apparmor/ -maxdepth 1 -printf '    %f\n'
 fi
 
 # Report profiles in complain mode (should be none in production)

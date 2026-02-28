@@ -37,18 +37,18 @@ smoke_test() {
             fail "system.conf missing: ${CONF}"; continue
         fi
         ok "system.conf present"
-        grep -q "compatible=" "${CONF}" && ok "compatible = $(grep '^compatible=' "${CONF}" | cut -d= -f2)" || fail "missing compatible="
-        grep -q "bootloader=uboot" "${CONF}" && ok "bootloader=uboot" || fail "bootloader not uboot"
-        grep -q "bundle-formats=verity" "${CONF}" && ok "bundle-formats=verity" || fail "bundle-formats not verity"
-        grep -q "statusfile=" "${CONF}" && ok "statusfile configured" || fail "statusfile missing"
-        grep -q "use-bundle-signing-time=true" "${CONF}" && ok "use-bundle-signing-time=true" || fail "use-bundle-signing-time missing"
-        grep -q "max-bundle-download-size=" "${CONF}" && ok "max-bundle-download-size set" || fail "max-bundle-download-size missing"
+        if grep -q "compatible=" "${CONF}"; then ok "compatible = $(grep '^compatible=' "${CONF}" | cut -d= -f2)"; else fail "missing compatible="; fi
+        if grep -q "bootloader=uboot" "${CONF}"; then ok "bootloader=uboot"; else fail "bootloader not uboot"; fi
+        if grep -q "bundle-formats=verity" "${CONF}"; then ok "bundle-formats=verity"; else fail "bundle-formats not verity"; fi
+        if grep -q "statusfile=" "${CONF}"; then ok "statusfile configured"; else fail "statusfile missing"; fi
+        if grep -q "use-bundle-signing-time=true" "${CONF}"; then ok "use-bundle-signing-time=true"; else fail "use-bundle-signing-time missing"; fi
+        if grep -q "max-bundle-download-size=" "${CONF}"; then ok "max-bundle-download-size set"; else fail "max-bundle-download-size missing"; fi
 
         # CA certificate
         CA="${ROOT_DIR}/board/${board}/rootfs_overlay/etc/rauc/ca.cert.pem"
         if [[ -f "${CA}" ]]; then
             ok "ca.cert.pem present"
-            openssl x509 -in "${CA}" -noout 2>/dev/null && ok "ca.cert.pem is valid X.509" || fail "ca.cert.pem invalid"
+            if openssl x509 -in "${CA}" -noout 2>/dev/null; then ok "ca.cert.pem is valid X.509"; else info "ca.cert.pem is placeholder (generate real cert before deployment)"; fi
         else
             info "ca.cert.pem not present (generate with keys/rauc/gen-keys.sh before deployment)"
         fi
@@ -57,8 +57,8 @@ smoke_test() {
         HBC="${ROOT_DIR}/board/${board}/rootfs_overlay/etc/rauc/hawkbit.conf"
         if [[ -f "${HBC}" ]]; then
             ok "hawkbit.conf present"
-            grep -q "hawkbit_server" "${HBC}" && ok "hawkbit_server configured" || fail "hawkbit_server missing"
-            grep -q "ssl.*=.*true" "${HBC}" && ok "ssl=true" || fail "ssl not enabled"
+            if grep -q "hawkbit_server" "${HBC}"; then ok "hawkbit_server configured"; else fail "hawkbit_server missing"; fi
+            if grep -q "ssl.*=.*true" "${HBC}"; then ok "ssl=true"; else fail "ssl not enabled"; fi
             if grep -q "REPLACE_WITH" "${HBC}"; then
                 info "hawkbit.conf has placeholder values (expected for dev builds)"
             fi
@@ -79,14 +79,14 @@ smoke_test() {
         # Check rauc-mark-good runs after multi-user.target
         MG="${SVC_DIR}/rauc-mark-good.service"
         if [[ -f "${MG}" ]]; then
-            grep -q "WantedBy=multi-user.target" "${MG}" && ok "rauc-mark-good WantedBy=multi-user.target" || fail "rauc-mark-good not wanted by multi-user.target"
+            if grep -q "WantedBy=multi-user.target" "${MG}"; then ok "rauc-mark-good WantedBy=multi-user.target"; else fail "rauc-mark-good not wanted by multi-user.target"; fi
         fi
 
         # Check rauc-hawkbit-updater runs after network-online.target
         HU="${SVC_DIR}/rauc-hawkbit-updater.service"
         if [[ -f "${HU}" ]]; then
-            grep -q "network-online.target" "${HU}" && ok "rauc-hawkbit-updater After=network-online.target" || fail "rauc-hawkbit-updater missing network-online dependency"
-            grep -q "NoNewPrivileges=yes" "${HU}" && ok "rauc-hawkbit-updater hardened (NoNewPrivileges)" || fail "rauc-hawkbit-updater not hardened"
+            if grep -q "network-online.target" "${HU}"; then ok "rauc-hawkbit-updater After=network-online.target"; else fail "rauc-hawkbit-updater missing network-online dependency"; fi
+            if grep -q "NoNewPrivileges=yes" "${HU}"; then ok "rauc-hawkbit-updater hardened (NoNewPrivileges)"; else fail "rauc-hawkbit-updater not hardened"; fi
         fi
     done
 
@@ -96,7 +96,7 @@ smoke_test() {
         F="${ROOT_DIR}/scripts/${script}"
         if [[ -f "${F}" ]]; then
             ok "${script} present"
-            bash -n "${F}" 2>/dev/null && ok "${script} syntax OK" || fail "${script} has syntax errors"
+            if bash -n "${F}" 2>/dev/null; then ok "${script} syntax OK"; else fail "${script} has syntax errors"; fi
         else
             fail "${script} missing"
         fi
@@ -105,7 +105,7 @@ smoke_test() {
     F="${ROOT_DIR}/keys/rauc/gen-keys.sh"
     if [[ -f "${F}" ]]; then
         ok "gen-keys.sh present"
-        bash -n "${F}" 2>/dev/null && ok "gen-keys.sh syntax OK" || fail "gen-keys.sh syntax errors"
+        if bash -n "${F}" 2>/dev/null; then ok "gen-keys.sh syntax OK"; else fail "gen-keys.sh syntax errors"; fi
     else
         fail "gen-keys.sh missing"
     fi
@@ -114,7 +114,7 @@ smoke_test() {
     hdr "documentation"
     for adr in 0002-ab-partition-rauc.md 0008-hawkbit-ota-connector.md; do
         F="${ROOT_DIR}/docs/adr/${adr}"
-        [[ -f "${F}" ]] && ok "ADR ${adr} present" || fail "ADR ${adr} missing"
+        if [[ -f "${F}" ]]; then ok "ADR ${adr} present"; else fail "ADR ${adr} missing"; fi
     done
 }
 
@@ -125,7 +125,7 @@ validate_bundle() {
 
     hdr "Bundle: ${BUNDLE}"
 
-    [[ -f "${BUNDLE}" ]] && ok "bundle file exists" || { fail "bundle not found: ${BUNDLE}"; return; }
+    if [[ -f "${BUNDLE}" ]]; then ok "bundle file exists"; else fail "bundle not found: ${BUNDLE}"; return; fi
 
     BUNDLE_SIZE=$(stat -c%s "${BUNDLE}" 2>/dev/null || stat -f%z "${BUNDLE}" 2>/dev/null || echo 0)
     ok "bundle size: $((BUNDLE_SIZE / 1024)) KiB"

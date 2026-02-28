@@ -64,8 +64,8 @@ if [[ "${1:-}" == "--provision" ]]; then
     echo "[evm-setup] Provisioning: sealing EVM HMAC key to TPM..."
 
     # Create authorization policy tied to PCR[0,4,7,8]
-    POLICY_SESSION=$(tpm2_startauthsession \
-        --tcti="${EVM_TCTI}" --policy-session -S /tmp/evm_policy.ctx)
+    tpm2_startauthsession \
+        --tcti="${EVM_TCTI}" --policy-session -S /tmp/evm_policy.ctx
 
     tpm2_policypcr \
         --tcti="${EVM_TCTI}" \

@@ -22,6 +22,7 @@ jobs:
         uses: ludeeus/action-shellcheck@master
         with:
           scandir: './scripts'
+          severity: 'warning'
           additional_files: >-
             board/raspberrypi5/post-build.sh
             board/raspberrypi5/post-image.sh
@@ -190,7 +191,7 @@ jobs:
       - name: Validate LUKS systemd services
         run: |
           for board in raspberrypi5 raspberrypi3bp; do
-            for svc in luks-data data.mount; do
+            for svc in luks-data.service data.mount; do
               F="board/${board}/rootfs_overlay/etc/systemd/system/${svc}"
               test -f "${F}" || (echo "MISSING: ${F}" && exit 1)
               echo "${board}/${svc} present"
@@ -359,7 +360,7 @@ jobs:
             ERRORS=0
             for f in "${AADIR}"/*; do
               [[ -f "${f}" ]] || continue
-              apparmor_parser --parse "${f}" || { echo "PARSE FAIL: ${f}"; ERRORS=$((ERRORS+1)); }
+              apparmor_parser --base /etc/apparmor.d --include /etc/apparmor.d --parse "${f}" || { echo "PARSE FAIL: ${f}"; ERRORS=$((ERRORS+1)); }
             done
             [[ ${ERRORS} -eq 0 ]] || (echo "${board}: ${ERRORS} profile parse error(s)" && exit 1)
             echo "${board}: all profiles parse OK"

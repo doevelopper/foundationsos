@@ -1,2 +1,2 @@
-FOUNDATIONSOS_VERSION = 1
-FOUNDATIONSOS_SITE = $(BR2_EXTERNAL_FOUNDATIONSOS_PATH)
+name: FOUNDATIONSOS
+desc: Security-hardened embedded Linux for Raspberry Pi

@@ -1,1 +1,1 @@
-{"aliveStatusCodes": [200, 404], "ignorePatterns": [{"pattern": "^https://api.reuse.software"}]}
+{"aliveStatusCodes": [200, 404], "ignorePatterns": [{"pattern": "^https://api.reuse.software"}, {"pattern": "^https://sourceforge.net"}]}
