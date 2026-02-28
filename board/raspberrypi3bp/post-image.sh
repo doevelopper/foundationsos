@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # post-image.sh — Raspberry Pi 3B+ board-specific post-image hook.
-# Copies boot overlay files into BINARIES_DIR, compiles the U-Boot boot script,
-# then invokes genimage to assemble the final SD card image.
+# Copies boot overlay files into BINARIES_DIR, validates TF-A + OP-TEE binaries,
+# compiles the U-Boot boot script, then invokes genimage to assemble the SD image.
 #
 # $1 = BINARIES_DIR (output/images)
 
@@ -25,6 +25,29 @@ for f in config.txt cmdline.txt; do
         echo "[post-image] Copied ${f} → BINARIES_DIR"
     fi
 done
+
+# ─── Validate TF-A BL31 binary ────────────────────────────────────────────────
+# bl31.bin is the TF-A armstub; loaded by VideoCore as EL3 entry point.
+if [ -f "${BINARIES_DIR}/bl31.bin" ]; then
+    echo "[post-image] TF-A bl31.bin found ($(du -h "${BINARIES_DIR}/bl31.bin" | cut -f1))"
+else
+    echo "[post-image] WARNING: bl31.bin not found in BINARIES_DIR."
+    echo "[post-image]          Ensure BR2_TARGET_ARM_TRUSTED_FIRMWARE=y is set."
+fi
+
+# ─── Validate OP-TEE binaries ────────────────────────────────────────────────
+optee_ok=true
+for tee_bin in tee-header_v2.bin tee-pager_v2.bin tee-pageable_v2.bin; do
+    if [ -f "${BINARIES_DIR}/${tee_bin}" ]; then
+        echo "[post-image] OP-TEE ${tee_bin} found ($(du -h "${BINARIES_DIR}/${tee_bin}" | cut -f1))"
+    else
+        echo "[post-image] WARNING: ${tee_bin} not found in BINARIES_DIR."
+        optee_ok=false
+    fi
+done
+if [ "${optee_ok}" = "false" ]; then
+    echo "[post-image]          Ensure BR2_TARGET_OPTEE_OS=y is set."
+fi
 
 # ─── Compile U-Boot boot script ───────────────────────────────────────────────
 BOOT_CMD="${BOARD_DIR}/rootfs_overlay/boot/boot.cmd"

@@ -9,10 +9,68 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-### Planned (v0.2.0)
-- ARM Trusted Firmware-A integration (RPi5 platform `rpi5`, RPi3B+ armstub `rpi3`)
-- OP-TEE OS secure-world integration
-- Update `genimage.cfg` to include `bl31.bin` and `bl32.bin`
+### Planned (v0.3.0)
+- TPM 2.0 measured boot: U-Boot extends PCR[0] with bl31.bin, U-Boot, and kernel hash
+- OP-TEE TA for TPM PCR sealing / attestation
+
+---
+
+## [0.2.0] — 2026-02-28
+
+ARM Trusted Firmware-A and OP-TEE OS integration for both supported boards.
+Establishes the full ARMv8-A security-world boot chain:
+VideoCore → TF-A BL31 (EL3) → OP-TEE BL32 (S-EL1) → U-Boot BL33 (EL2) → Linux.
+
+### Added
+
+**ARM Trusted Firmware-A (TF-A)**
+- `configs/raspberrypi5_defconfig`: `BR2_TARGET_ARM_TRUSTED_FIRMWARE=y`,
+  platform `rpi5`, `AARCH64_SP=optee`, `LOG_LEVEL=20`, `BL31=y`
+- `configs/raspberrypi3bp_defconfig`: `BR2_TARGET_ARM_TRUSTED_FIRMWARE=y`,
+  platform `rpi3`, `AARCH64_SP=optee`, `RPI3_PRELOADED_DTB_BASE=0x2eff8000`
+- Both defconfigs: `BR2_TARGET_ARM_TRUSTED_FIRMWARE_UBOOT_AS_BL33=y` — U-Boot
+  is registered as BL33 (Normal World entry) at TF-A compile time
+
+**OP-TEE OS**
+- `configs/raspberrypi5_defconfig`: `BR2_TARGET_OPTEE_OS=y`, platform `rpi5`,
+  `CFG_ARM64_core=y`, `CFG_TEE_CORE_LOG_LEVEL=2`
+- `configs/raspberrypi3bp_defconfig`: `BR2_TARGET_OPTEE_OS=y`, platform `rpi3`,
+  `CFG_TZDRAM_START=0x3f000000 CFG_TZDRAM_SIZE=0x01000000` (16 MiB carve-out
+  from top of 1 GiB RAM)
+- Both defconfigs: `BR2_PACKAGE_OPTEE_CLIENT=y BR2_PACKAGE_OPTEE_CLIENT_SUPPLICANT=y`
+
+**OP-TEE kernel driver**
+- `board/raspberrypi5/linux-hardened.config`: `CONFIG_TEE=y CONFIG_OPTEE=y` —
+  creates `/dev/tee0` (TA invocation) and `/dev/teepriv0` (supplicant interface)
+- `board/raspberrypi3bp/linux-hardened.config`: same
+
+**tee-supplicant systemd service**
+- `board/raspberrypi5/rootfs_overlay/etc/systemd/system/tee-supplicant.service`
+  — starts `tee-supplicant /dev/teepriv0`; hardened unit (NoNewPrivileges,
+  ProtectSystem=strict, DeviceAllow=/dev/teepriv0); writes to `/data/tee`
+- `board/raspberrypi3bp/rootfs_overlay/etc/systemd/system/tee-supplicant.service`
+  — identical
+
+**Boot partition (genimage.cfg)**
+- Both boards: added `tee-header_v2.bin`, `tee-pager_v2.bin`,
+  `tee-pageable_v2.bin` to boot.vfat file list (OP-TEE paged image)
+
+**Architecture documentation**
+- `docs/adr/0006-tfa-optee-boot-chain.md` — full boot chain diagram, memory
+  carve-out rationale, BL32 integration notes, alternatives considered
+
+### Changed
+
+- `board/raspberrypi5/rootfs_overlay/boot/config.txt`: added `armstub=bl31.bin`
+  above the `kernel=u-boot.bin` line; added explanatory comment
+- `board/raspberrypi3bp/rootfs_overlay/boot/config.txt`: activated
+  `armstub=bl31.bin` (was commented out as deferred in v0.1.1)
+- `board/raspberrypi5/post-image.sh`: added TF-A `bl31.bin` validation step and
+  OP-TEE pager binary validation before genimage invocation
+- `board/raspberrypi3bp/post-image.sh`: same
+- `configs/raspberrypi5_defconfig`: version banner updated to v0.2.0; added
+  boot chain documentation in header comment
+- `configs/raspberrypi3bp_defconfig`: same
 
 ---
 
@@ -147,6 +205,7 @@ _Baseline Buildroot image booting on Raspberry Pi 3B+ (AArch64 64-bit mode)._
 
 ---
 
-[Unreleased]: https://github.com/doevelopper/foundationsos/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/doevelopper/foundationsos/compare/v0.2.0...HEAD
 [0.1.0]: https://github.com/doevelopper/foundationsos/releases/tag/v0.1.0
 [0.1.1]: https://github.com/doevelopper/foundationsos/compare/v0.1.0...v0.1.1
+[0.2.0]: https://github.com/doevelopper/foundationsos/compare/v0.1.1...v0.2.0

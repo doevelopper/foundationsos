@@ -1,0 +1,36 @@
+# tee-supplicant.service — OP-TEE Supplicant (REE-side TEE daemon)
+#
+# tee-supplicant bridges the Normal World (REE) to the OP-TEE OS (TEE) for
+# operations that require REE resources: secure storage, RPC calls, TA loading
+# from the REE filesystem, and RPMB access.
+#
+# The TEE device node (/dev/teepriv0) is created by the tee driver in the
+# kernel (CONFIG_OPTEE=y). This unit depends on the device being present.
+#
+# Provided by: BR2_PACKAGE_OPTEE_CLIENT=y / BR2_PACKAGE_OPTEE_CLIENT_SUPPLICANT=y
+
+[Unit]
+Description=OP-TEE Supplicant (REE-side TEE daemon)
+Documentation=https://optee.readthedocs.io/en/latest/architecture/tee_linux_driver.html
+After=local-fs.target
+ConditionPathExists=/dev/teepriv0
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/tee-supplicant /dev/teepriv0
+Restart=on-failure
+RestartSec=5
+
+# ─── Hardening ────────────────────────────────────────────────────────────────
+User=root
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=no
+DeviceAllow=/dev/teepriv0 rw
+DeviceAllow=/dev/tee0 rw
+ReadWritePaths=/data/tee
+
+[Install]
+WantedBy=multi-user.target
