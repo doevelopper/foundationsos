@@ -1,21 +1,4 @@
 # Top-level Makefile for FoundationsOS
-#
-# Convenience wrapper around Buildroot's make system.
-# Usage:
-#   make setup                              — install host dependencies
-#   make configure                          — configure for default board (RPi5)
-#   make configure BOARD=raspberrypi3bp     — configure for RPi3B+ (64-bit)
-#   make build                              — build the full image
-#   make flash DEVICE=/dev/sdX              — flash SD card image
-#   make clean                              — clean build artifacts
-#   make distclean                          — full clean including downloads
-#   make rauc-bundle                        — build a RAUC update bundle
-#   make menuconfig                         — open Buildroot menuconfig
-#   make linux-menuconfig                   — open Linux kernel menuconfig
-#
-# Supported boards (BOARD=):
-#   raspberrypi5    — Raspberry Pi 5 (BCM2712, Cortex-A76, default)
-#   raspberrypi3bp  — Raspberry Pi 3 Model B+ (BCM2837, Cortex-A53, AArch64)
 
 MAKE_HELPERS_DIRECTORY := helpers/
 
@@ -252,14 +235,71 @@ $(foreach defconfig,$(SUPPORTED_TARGETS),$(defconfig)-rauc-bundle): %-rauc-bundl
 .PHONY: help
 help: ## Display this help and exits.
 	$(Q)echo ""
-	$(Q)echo "  Version $$(git describe --always), Copyright (C) 2023-2026 AHL"
+	$(Q)echo "$(TERM_BOLD)  FoundationsOS — Secure Embedded Linux Build System$(TERM_RESET)"
+	$(Q)echo "  Version $$(git describe --always --tags 2>/dev/null || echo dev), Copyright (C) 2023-2026 AHL"
+	$(Q)echo "  Buildroot $(BLRT_VERSION)  |  Workspace: $(BLRT_OOSB)"
 	$(Q)echo
 	$(Q)echo "  Comes with ABSOLUTELY NO WARRANTY; for details see file LICENSE."
 	$(Q)echo "  SPDX-License-Identifier: GPL-2.0-only"
 	$(Q)echo
-	$(Q)echo "$(TERM_UNDERLINE)Supported targets:$(TERM_NOUNDERLINE)"
+	$(Q)echo "$(TERM_UNDERLINE)Supported boards (BOARD suffix):$(TERM_NOUNDERLINE)"
 	$(Q)echo
-	$(Q)$(foreach b, $(sort $(notdir $(patsubst %_defconfig,%,$(wildcard $(DEFCONFIG_DIR)/*_defconfig)))), \
-		printf "  	%-30s - Build configuration for %s\\n" $(b) $(b:_defconfig=); \
-	)	
+	$(Q)$(foreach b,$(SUPPORTED_TARGETS), \
+		printf "    %-32s %s\n" "$(b)" "Board configuration: $(b)"; \
+	)
+	$(Q)echo
+	$(Q)echo "$(TERM_UNDERLINE)Bootstrap (run once):$(TERM_NOUNDERLINE)"
+	$(Q)printf "    %-32s %s\n" "<board>-configure"       "Download & configure Buildroot for <board>"
+	$(Q)echo
+	$(Q)echo "$(TERM_UNDERLINE)Build goals (replace <board> with a board name above):$(TERM_NOUNDERLINE)"
+	$(Q)echo
+	$(Q)printf "    %-32s %s\n" "<board>-compile"         "Compile full image and copy artifacts"
+	$(Q)printf "    %-32s %s\n" "<board>-unit-test"       "Run unit tests (after compile)"
+	$(Q)printf "    %-32s %s\n" "<board>-integration-test" "Run integration tests (after unit-test)"
+	$(Q)printf "    %-32s %s\n" "<board>-artifacts-release" "Package board artifacts (after integration-test)"
+	$(Q)echo
+	$(Q)echo "$(TERM_UNDERLINE)Configuration goals:$(TERM_NOUNDERLINE)"
+	$(Q)echo
+	$(Q)printf "    %-32s %s\n" "<board>-menuconfig"      "Open Buildroot menuconfig for <board>"
+	$(Q)printf "    %-32s %s\n" "<board>-savedefconfig"   "Save current config back to <board>_defconfig"
+	$(Q)printf "    %-32s %s\n" "<board>-linux-menuconfig" "Open Linux kernel menuconfig & save defconfig"
+	$(Q)printf "    %-32s %s\n" "<board>-linux-rebuild"   "Rebuild Linux kernel after config change"
+	$(Q)printf "    %-32s %s\n" "<board>-uboot-menuconfig" "Open U-Boot menuconfig & save defconfig"
+	$(Q)printf "    %-32s %s\n" "<board>-uboot-rebuild"   "Rebuild U-Boot after config change"
+	$(Q)printf "    %-32s %s\n" "<board>-busybox-menuconfig" "Open BusyBox menuconfig & save config"
+	$(Q)printf "    %-32s %s\n" "<board>-busybox-rebuild" "Rebuild BusyBox after config change"
+	$(Q)echo
+	$(Q)echo "$(TERM_UNDERLINE)Security / signing goals:$(TERM_NOUNDERLINE)"
+	$(Q)echo
+	$(Q)printf "    %-32s %s\n" "<board>-fit-sign"        "Sign FIT image for <board>"
+	$(Q)printf "    %-32s %s\n" "<board>-rauc-bundle"     "Build a signed RAUC OTA update bundle"
+	$(Q)echo
+	$(Q)echo "$(TERM_UNDERLINE)Deployment goals:$(TERM_NOUNDERLINE)"
+	$(Q)echo
+	$(Q)printf "    %-32s %s\n" "<board>-flash DEVICE=..." "Flash SD card image to a block device"
+	$(Q)echo
+	$(Q)echo "$(TERM_UNDERLINE)Clean goals:$(TERM_NOUNDERLINE)"
+	$(Q)echo
+	$(Q)printf "    %-32s %s\n" "<board>-target-clean"    "Clean only the target staging area"
+	$(Q)printf "    %-32s %s\n" "<board>-clean"           "Delete all files created by the build"
+	$(Q)printf "    %-32s %s\n" "<board>-distclean"       "Delete all non-source files (incl. .config)"
+	$(Q)printf "    %-32s %s\n" "<board>-realclean"       "Wipe the entire build-artifacts directory"
+	$(Q)echo
+	$(Q)echo "$(TERM_UNDERLINE)Variables:$(TERM_NOUNDERLINE)"
+	$(Q)echo
+	$(Q)printf "    %-32s %s\n" "DEVICE=/dev/sdX"         "Block device for <board>-flash (required)"
+	$(Q)printf "    %-32s %s\n" "V=1"                     "Enable verbose build output"
+	$(Q)printf "    %-32s %s\n" "PARALLEL_JOBS=N"         "Override parallel job count (default: nproc+1)"
+	$(Q)printf "    %-32s %s\n" "RAUC_KEY_FILE=..."       "Path to RAUC signing private key"
+	$(Q)printf "    %-32s %s\n" "RAUC_CERT_FILE=..."      "Path to RAUC signing certificate"
+	$(Q)printf "    %-32s %s\n" "FOUNDATIONSOS_VERSION=..." "Override OTA bundle version string"
+	$(Q)echo
+	$(Q)echo "$(TERM_UNDERLINE)Examples:$(TERM_NOUNDERLINE)"
+	$(Q)echo
+	$(Q)printf "    %s\n" "make raspberrypi5-configure"
+	$(Q)printf "    %s\n" "make raspberrypi5-compile"
+	$(Q)printf "    %s\n" "make raspberrypi5-flash DEVICE=/dev/sdb"
+	$(Q)printf "    %s\n" "make raspberrypi3bp-rauc-bundle"
+	$(Q)printf "    %s\n" "make raspberrypi5-linux-menuconfig"
+	$(Q)echo
 
