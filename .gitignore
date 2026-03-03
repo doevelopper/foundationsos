@@ -1,3 +1,70 @@
+
+
+# Ignore everything
+#*
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# But not these files...
+!.gitignore
+!.config
+
+# ...even if they are in subdirectories
+#!*/
+dependencies/*
+build/*
+!build/linux-rpi-4.14.y-rt
+!build/linux-rpi-4.14.y-rt/*
+!build/linux-rpi-4.14.y-rt/.config
+!build/linux-rpi-4.14.y-rt/Makefile
+
+#build  
+#host  
+#images  
+#!Makefile  
+#scripts  
+#staging  
+#target
+#.config.old
+#.br-external.mk
+#..config.tmp
+
+#!*/build/linux-rpi-4.14.y-rt/.config
+#!*/build/linux-rpi-4.14.y-rt/Makefile
+workspace/
+br.log
+
 # Build outputs
 output/
 dl/
