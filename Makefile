@@ -227,19 +227,27 @@ $(foreach defconfig,$(SUPPORTED_TARGETS),$(defconfig)-realclean): %-realclean:
 ## #
 ## ##################################################################################################################################
 
-## Flash the SD card image
-flash:
+## Flash the SD card image to a target block device
+## Usage: make <board>-flash DEVICE=/dev/sdX
+$(foreach defconfig,$(SUPPORTED_TARGETS),$(defconfig)-flash): %-flash:
+	$(Q)$(call MESSAGE,"[  Flashing $* SD card image to $(DEVICE)]")
 	@if [ "$(DEVICE)" = "/dev/sdX" ]; then \
-		echo "Error: set DEVICE to your target block device, e.g. make flash DEVICE=/dev/sdb"; \
+		echo "Error: set DEVICE to your target block device, e.g. make $*-flash DEVICE=/dev/sdb"; \
 		exit 1; \
 	fi
-	@./scripts/flash.sh --device $(DEVICE) --image $(OUTPUT_DIR)/images/sdcard.img
+	$(Q)$(BLRT_EXT)/scripts/flash.sh \
+		--device $(DEVICE) \
+		--image $(BLRT_ARTIFACTS_DIR)/$*/images/sdcard.img
 
-## Build a RAUC update bundle
-rauc-bundle:
-	@echo "[foundationsos] Building RAUC update bundle..."
-	@./scripts/build-rauc-bundle.sh
-	@echo "[foundationsos] RAUC bundle ready."
+## Build a signed RAUC update bundle for a specific board
+## Usage: make <board>-rauc-bundle
+$(foreach defconfig,$(SUPPORTED_TARGETS),$(defconfig)-rauc-bundle): %-rauc-bundle:
+	$(Q)$(call MESSAGE,"[  Building RAUC update bundle for $*]")
+	$(Q)BOARD=$* \
+		IMAGES_DIR=$(BLRT_ARTIFACTS_DIR)/$*/images \
+		BUNDLE_DIR=$(BLRT_ARTIFACTS_DIR)/$* \
+		$(BLRT_EXT)/scripts/build-rauc-bundle.sh
+	$(Q)$(call MESSAGE,"[  RAUC bundle for $* ready.]")
 
 .PHONY: help
 help: ## Display this help and exits.

@@ -28,12 +28,13 @@ case "${BOARD}" in
         exit 1 ;;
 esac
 
-OUTPUT_DIR="${ROOT_DIR}/output/${BOARD}"
-IMAGES_DIR="${OUTPUT_DIR}/images"
+OUTPUT_DIR="${OUTPUT_DIR:-${ROOT_DIR}/output/${BOARD}}"
+IMAGES_DIR="${IMAGES_DIR:-${OUTPUT_DIR}/images}"
+BUNDLE_DIR="${BUNDLE_DIR:-${ROOT_DIR}/output}"
 
 VERSION="${FOUNDATIONSOS_VERSION:-$(git -C "${ROOT_DIR}" describe --tags --always 2>/dev/null || echo "dev")}"
 BUNDLE_NAME="foundationsos-${BOARD}-${VERSION}.raucb"
-BUNDLE_PATH="${ROOT_DIR}/output/${BUNDLE_NAME}"
+BUNDLE_PATH="${BUNDLE_DIR}/${BUNDLE_NAME}"
 
 RAUC_KEY_FILE="${RAUC_KEY_FILE:-${ROOT_DIR}/keys/rauc/signing.key.pem}"
 RAUC_CERT_FILE="${RAUC_CERT_FILE:-${ROOT_DIR}/keys/rauc/signing.cert.pem}"
