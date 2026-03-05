@@ -5,14 +5,19 @@ BR2_TOOLCHAIN_EXTERNAL_BOOTLIN=y
 BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_FOUNDATIONSOS_PATH)/board/foundation5/patches"
 BR2_DOWNLOAD_FORCE_CHECK_HASHES=y
 BR2_TARGET_GENERIC_HOSTNAME="FoundationsOS"
-BR2_TARGET_GENERIC_ISSUE="FoundationsOS v0.0.0 - Secured Embedded Linux 5"
+# Static fallback; post-build.sh overwrites this with the git-derived version at build time.
+BR2_TARGET_GENERIC_ISSUE="FoundationsOS 0.0.0+unknown - Secured Embedded Linux 5"
 BR2_TARGET_GENERIC_PASSWD_SHA512=y
 BR2_INIT_SYSTEMD=y
 BR2_SYSTEM_BIN_SH_BASH=y
 BR2_SYSTEM_DHCP="eth0"
 BR2_SYSTEM_DEFAULT_PATH="/bin:/sbin:/usr/bin:/usr/sbin"
-BR2_ROOTFS_POST_BUILD_SCRIPT="$(BR2_EXTERNAL_FOUNDATIONSOS_PATH)/board/foundation5/post-build.sh"
-BR2_ROOTFS_POST_IMAGE_SCRIPT="$(BR2_EXTERNAL_FOUNDATIONSOS_PATH)/board/foundation5/post-image.sh"
+BR2_ROOTFS_PRE_BUILD_SCRIPT="$(BR2_EXTERNAL_FOUNDATIONSOS_PATH)/board/common/pre-build.sh"
+BR2_ROOTFS_POST_BUILD_SCRIPT="$(BR2_EXTERNAL_FOUNDATIONSOS_PATH)/board/common/post-build.sh $(BR2_EXTERNAL_FOUNDATIONSOS_PATH)/board/foundation5/post-build.sh"
+BR2_ROOTFS_POST_FAKEROOT_SCRIPT="$(BR2_EXTERNAL_FOUNDATIONSOS_PATH)/board/common/post-fakeroot.sh"
+BR2_ROOTFS_POST_IMAGE_SCRIPT="$(BR2_EXTERNAL_FOUNDATIONSOS_PATH)/board/common/post-image.sh $(BR2_EXTERNAL_FOUNDATIONSOS_PATH)/board/foundation5/post-image.sh"
+# Shared args injected into every hook (pre-build, post-build, post-fakeroot, post-image).
+BR2_ROOTFS_POST_SCRIPT_ARGS="--board-gen=5"
 BR2_LINUX_KERNEL=y
 BR2_LINUX_KERNEL_CUSTOM_TARBALL=y
 BR2_LINUX_KERNEL_CUSTOM_TARBALL_LOCATION="$(call github,raspberrypi,linux,21b410140c47ffab5668399f6f143c7d7b935c8b)/linux-21b410140c47ffab5668399f6f143c7d7b935c8b.tar.gz"

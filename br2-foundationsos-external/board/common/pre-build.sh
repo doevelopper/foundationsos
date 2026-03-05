@@ -5,32 +5,52 @@
 # Invoked via: BR2_ROOTFS_PRE_BUILD_SCRIPT
 #
 # Buildroot calls this script before any package is built.
-# Receives the following positional arguments:
-#   $1 ... - Extra arguments from BR2_ROOTFS_PRE_BUILD_SCRIPT_ARGS (if any)
+#
+# Calling convention (Buildroot 2026.02+):
+#   $1       - TARGET_DIR (populated rootfs staging directory)
+#   $2..n    - BR2_ROOTFS_POST_SCRIPT_ARGS   (shared with all hooks)
+#              then BR2_ROOTFS_PRE_BUILD_SCRIPT_ARGS (pre-build-specific)
+#
+# Recognised named arguments (passed via BR2_ROOTFS_POST_SCRIPT_ARGS):
+#   --board-gen=N   Board generation number
+#                   e.g.  BR2_ROOTFS_POST_SCRIPT_ARGS="--board-gen=5"
 #
 # Standard Buildroot environment variables available:
-#   HOST_DIR     - host sysroot ($(O)/host)
+#   HOST_DIR     - host sysroot        ($(O)/host)
 #   STAGING_DIR  - staging sysroot
-#   TARGET_DIR   - target rootfs staging directory
-#   BUILD_DIR    - per-package build trees ($(O)/build)
-#   BINARIES_DIR - final images output directory ($(O)/images)
-#   BASE_DIR     - output base directory ($(O))
+#   TARGET_DIR   - target rootfs       (also $1)
+#   BUILD_DIR    - per-package builds  ($(O)/build)
+#   BINARIES_DIR - final images        ($(O)/images)
+#   BASE_DIR     - output base         ($(O))
+#   BR2_EXTERNAL_FOUNDATIONSOS_PATH - path to this external tree
 
 set -euo pipefail
 
 SCRIPT_NAME="$(basename "$0")"
 BOARD_COMMON_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-log() {
-    echo "[${SCRIPT_NAME}] $*"
-}
+TARGET_DIR="${1:?TARGET_DIR argument is required}"
+shift   # $@ now contains BR2_ROOTFS_POST_SCRIPT_ARGS + BR2_ROOTFS_PRE_BUILD_SCRIPT_ARGS
+
+log() { echo "[${SCRIPT_NAME}] $*"; }
+
+# ---------------------------------------------------------------------------
+# Parse named arguments
+# ---------------------------------------------------------------------------
+BOARD_GEN=""
+for arg in "$@"; do
+    case "${arg}" in
+        --board-gen=*) BOARD_GEN="${arg#--board-gen=}" ;;
+    esac
+done
 
 log "--- Pre-Build Hook: START ---"
 log "HOST_DIR     = ${HOST_DIR:-<unset>}"
 log "STAGING_DIR  = ${STAGING_DIR:-<unset>}"
-log "TARGET_DIR   = ${TARGET_DIR:-<unset>}"
+log "TARGET_DIR   = ${TARGET_DIR}"
 log "BUILD_DIR    = ${BUILD_DIR:-<unset>}"
 log "BINARIES_DIR = ${BINARIES_DIR:-<unset>}"
+log "BOARD_GEN    = ${BOARD_GEN:-<not set>}"
 log "Extra args   = $*"
 
 # ---------------------------------------------------------------------------
