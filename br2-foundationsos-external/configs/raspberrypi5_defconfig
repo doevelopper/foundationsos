@@ -54,7 +54,7 @@ BR2_LINUX_KERNEL_LATEST_VERSION=y
 # our security hardening fragment on top.
 BR2_LINUX_KERNEL_USE_DEFCONFIG=y
 BR2_LINUX_KERNEL_DEFCONFIG="multi_v8"
-BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="board/raspberrypi5/linux-hardened.config"
+BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_FOUNDATIONSOS_PATH)/board/raspberrypi5/linux-hardened.config"
 BR2_LINUX_KERNEL_DTS_SUPPORT=y
 BR2_LINUX_KERNEL_INTREE_DTS_NAME="broadcom/bcm2712-rpi-5-b"
 BR2_LINUX_KERNEL_NEEDS_HOST_OPENSSL=y
@@ -67,7 +67,7 @@ BR2_TARGET_UBOOT=y
 BR2_TARGET_UBOOT_BUILD_SYSTEM_KCONFIG=y
 BR2_TARGET_UBOOT_VERSION="2024.01"
 BR2_TARGET_UBOOT_BOARD_DEFCONFIG="rpi_arm64"
-BR2_TARGET_UBOOT_CONFIG_FRAGMENT_FILES="board/raspberrypi5/uboot-tpm.config"
+BR2_TARGET_UBOOT_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_FOUNDATIONSOS_PATH)/board/raspberrypi5/uboot-tpm.config"
 BR2_TARGET_UBOOT_NEEDS_DTC=y
 
 # ─── ARM Trusted Firmware-A (BL31 — EL3 Secure Monitor) ──────────────────────
@@ -169,6 +169,6 @@ BR2_TARGET_ROOTFS_EXT2_SIZE="512M"
 BR2_TARGET_ROOTFS_SQUASHFS=y
 
 # ─── Board Files ───────────────────────────────────────────────────────────────
-BR2_ROOTFS_OVERLAY="board/raspberrypi5/rootfs_overlay"
-BR2_ROOTFS_POST_BUILD_SCRIPT="board/raspberrypi5/post-build.sh"
-BR2_ROOTFS_POST_IMAGE_SCRIPT="board/raspberrypi5/post-image.sh"
+BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_FOUNDATIONSOS_PATH)/board/raspberrypi5/rootfs_overlay"
+BR2_ROOTFS_POST_BUILD_SCRIPT="$(BR2_EXTERNAL_FOUNDATIONSOS_PATH)/board/raspberrypi5/post-build.sh"
+BR2_ROOTFS_POST_IMAGE_SCRIPT="$(BR2_EXTERNAL_FOUNDATIONSOS_PATH)/board/raspberrypi5/post-image.sh"

@@ -37,6 +37,24 @@ shift   # $@ now contains BR2_ROOTFS_POST_SCRIPT_ARGS + BR2_ROOTFS_POST_BUILD_SC
 
 log() { echo "[${SCRIPT_NAME}] $*"; }
 
+SCRIPT_DIR=${BR2_EXTERNAL_UNIPI_PATH}/board/common
+
+# BOARD_DIR=${2}
+# . "${BR2_EXTERNAL_UNIPI_PATH}/meta"
+# . "${BOARD_DIR}/meta"
+# . "${SCRIPT_DIR}/post-helpers.sh"
+
+# # Write os-release
+# (
+#     echo "NAME=\"${OS_NAME}\""
+#     echo "VERSION=\"$(os_version) (${BOARD_NAME})\""
+#     echo "ID=${OS_ID}"
+#     echo "VERSION_ID=$(os_version)"
+#     echo "PRETTY_NAME=\"${OS_NAME} $(os_version)\""
+#     echo "HOME_URL=\"https://github.com/superbox-dev\""
+# ) > "${TARGET_DIR}/usr/lib/os-release"
+
+
 # ---------------------------------------------------------------------------
 # compute_version – derive a human-readable version string from the git repo.
 #
@@ -128,5 +146,14 @@ fi
 #   - Apply common overlays or skeletal configuration files
 #   - Run policy/compliance checks against the staged rootfs
 # ---------------------------------------------------------------------------
+
+# # Update motd
+# cat > "${TARGET_DIR}/etc/motd" <<EOL
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Hello, this is ${OS_NAME} $(os_version)
+# Documentation: https://github.com/superbox-dev/unipi-control#readme
+
+# EOL
+
 
 log "--- Post-Build Hook: DONE ---"

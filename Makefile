@@ -302,4 +302,10 @@ help: ## Display this help and exits.
 	$(Q)printf "    %s\n" "make raspberrypi3bp-rauc-bundle"
 	$(Q)printf "    %s\n" "make raspberrypi5-linux-menuconfig"
 	$(Q)echo
-
+	$(Q)echo ".-----------------.--------------------.------------------.--------------------. "
+	$(Q)echo "|  Adrien L. H    | Real-Time Embedded | /\"\ ASCII RIBBON | ACME's conspiracy: |"
+	$(Q)echo "| +xx 000 000 000 | Software Architect | \ / CAMPAIGN     |  ___                |"
+	$(Q)echo "| +xx 000 000 000 \`------------.-------:  X  AGAINST      |  \e/  There is no  |"
+	$(Q)echo "| https://memyselandi_ad_exem/ | _/*\_ | / \ HTML MAIL    |   v   conspiracy.   |"
+	$(Q)echo "'------------------------------^-------^------------------^---------------------'"
+	$(Q)echo
