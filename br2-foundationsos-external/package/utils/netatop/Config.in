@@ -1,0 +1,22 @@
+config BR2_PACKAGE_NETATOP
+	bool "netatop"
+	depends on BR2_USE_MMU # atop
+	depends on BR2_LINUX_KERNEL
+	# kernel headers: >= 2.6.24
+	select BR2_PACKAGE_ATOP2 # runtime
+	select BR2_PACKAGE_ZLIB
+	help
+	  The optional kernel module netatop can be loaded to gather
+	  statistics about the TCP and UDP packets that have been
+	  transmitted/received per process and per thread.
+
+	  Netatop requires a Linux kernel >= 2.6.24 with the following
+	  option enabled:
+
+	  - CONFIG_NETFILTER
+
+	  http://www.atoptool.nl/netatop.php
+
+comment "netatop needs a Linux kernel >= 2.6.24 to be built"
+	depends on BR2_USE_MMU
+	depends on !BR2_LINUX_KERNEL

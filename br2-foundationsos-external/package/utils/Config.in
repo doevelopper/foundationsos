@@ -1,0 +1,19 @@
+comment "System Utilities & Monitoring Tools"
+
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/utils/atop2/Config.in"
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/utils/btop/Config.in"
+
+comment "System Configuration & Persistence"
+
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/utils/netatop/Config.in"
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/utils/persist-partition/Config.in"
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/utils/home-persistence/Config.in"
+
+comment "SSH & Security Tools"
+
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/utils/ssh-root-password/Config.in"
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/utils/ssh-key-persistence/Config.in"
+
+comment "Testing & Development Tools"
+
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/utils/cucumber-cpp/Config.in"

@@ -1,0 +1,4 @@
+config BR2_PACKAGE_HELLO_CMAKE
+	bool "hello-cmake"
+	help
+	  This is an example of a package built with cmake.

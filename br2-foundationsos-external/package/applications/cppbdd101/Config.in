@@ -1,0 +1,4 @@
+config BR2_PACKAGE_CPPBDD101
+	bool "cppbdd101"
+	help
+	  C++ Behavior Driven Development example and testing framework.

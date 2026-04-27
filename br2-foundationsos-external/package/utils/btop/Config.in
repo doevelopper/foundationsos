@@ -1,0 +1,15 @@
+config BR2_PACKAGE_BTOP
+	bool "btop"
+	depends on BR2_USE_MMU # atop
+	depends on BR2_LINUX_KERNEL
+	# kernel headers: >= 2.6.24
+	select BR2_PACKAGE_ATOP2 # runtime
+	select BR2_PACKAGE_ZLIB
+	help
+	  Resource monitor that shows usage and stats for processor, memory, disks, network and processes.
+
+	  https://github.com/aristocratos/btop
+
+comment "btop needs a Linux kernel >= 2.6.24 to be built"
+	depends on BR2_USE_MMU
+	depends on !BR2_LINUX_KERNEL

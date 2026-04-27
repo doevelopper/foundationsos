@@ -1,0 +1,4 @@
+config BR2_PACKAGE_HELLO_MAKEFILE
+	bool "hello-makefile"
+	help
+	  This is an example of a package built with a classic Makefile.

@@ -1,0 +1,7 @@
+config BR2_PACKAGE_SSH_KEY_PERSISTENCE
+	bool "ssh-key-persistence"
+	select BR2_PACKAGE_OPENSSH # runtime
+	select BR2_PACKAGE_PERSIST_PARTITION # runtime
+	select BR2_PACKAGE_RSYNC # runtime
+	help
+	  Fake package to save ssh keys between reboots and updates.

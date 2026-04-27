@@ -1,0 +1,2 @@
+# WARNING: INSECURE, do not use for real projects
+PermitRootLogin yes

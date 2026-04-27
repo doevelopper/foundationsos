@@ -1,0 +1,14 @@
+[Unit]
+Description=Ssh Config Directory /etc/ssh
+Wants=mnt-persist.mount
+After=mnt-persist.mount
+Before=local-fs.target umount.target sshd.service ssh-key-persistence.service
+
+[Mount]
+What=/mnt/persist/etc/ssh
+Where=/etc/ssh
+Type=none
+Options=bind
+
+[Install]
+WantedBy=local-fs.target

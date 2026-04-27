@@ -1,0 +1,4 @@
+config BR2_PACKAGE_TEMPLATE_CPP
+	bool "template-cpp"
+	help
+	  C++ project template for FoundationOS applications.

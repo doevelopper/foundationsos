@@ -1,0 +1,4 @@
+config BR2_PACKAGE_GPIO
+	bool "gpio"
+	help
+	  GPIO control and manipulation example application.

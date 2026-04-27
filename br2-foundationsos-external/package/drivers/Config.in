@@ -1,0 +1,9 @@
+comment "Kernel Space Drivers"
+
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/drivers/kernel/Config.in"
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/drivers/kernel-space/Config.in"
+
+comment "User Space Drivers"
+
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/drivers/user/Config.in"
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/drivers/user-space/Config.in"

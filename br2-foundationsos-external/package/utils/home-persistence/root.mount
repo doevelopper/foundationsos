@@ -1,0 +1,14 @@
+[Unit]
+Description=Root Home Directory /root
+Wants=mnt-persist.mount
+After=mnt-persist.mount
+Before=local-fs.target umount.target
+
+[Mount]
+What=/mnt/persist/root
+Where=/root
+Type=none
+Options=bind
+
+[Install]
+WantedBy=local-fs.target

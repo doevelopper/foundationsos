@@ -1,0 +1,57 @@
+# FoundationsOS Application Packages
+# Development and example applications
+
+comment "Applications (Examples & Development)"
+
+config BR2_PACKAGE_HELLO_MAKEFILE
+	bool "hello-makefile"
+	help
+	  Example application built with a classic Makefile.
+	  Source: https://www.blaess.fr/christophe/yocto-lab/
+
+config BR2_PACKAGE_HELLO_CMAKE
+	bool "hello-cmake"
+	help
+	  Example application built with CMake.
+	  Source: https://www.blaess.fr/christophe/yocto-lab/
+
+config BR2_PACKAGE_HELLO_AUTOTOOLS
+	bool "hello-autotools"
+	help
+	  Example application built with Autotools.
+	  Source: https://www.blaess.fr/christophe/yocto-lab/
+
+config BR2_PACKAGE_HELLOWORLD
+	bool "helloworld"
+	help
+	  Simple hello world example application.
+
+config BR2_PACKAGE_GPIO
+	bool "gpio"
+	help
+	  GPIO control application example.
+
+config BR2_PACKAGE_TIMER
+	bool "timer"
+	help
+	  Timer utility example application.
+
+config BR2_PACKAGE_CPPBDD101
+	bool "cppbdd101"
+	help
+	  C++ Behavior Driven Development example.
+
+config BR2_PACKAGE_TEMPLATE_C
+	bool "template-c"
+	help
+	  C language project template.
+
+config BR2_PACKAGE_TEMPLATE_CPP
+	bool "template-cpp"
+	help
+	  C++ language project template.
+
+config BR2_PACKAGE_TEMPLATE_PY
+	bool "template-py"
+	help
+	  Python language project template.

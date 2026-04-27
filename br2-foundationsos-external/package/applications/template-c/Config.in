@@ -1,0 +1,4 @@
+config BR2_PACKAGE_TEMPLATE_C
+	bool "template-c"
+	help
+	  C project template for FoundationOS applications.

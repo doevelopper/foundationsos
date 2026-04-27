@@ -1,0 +1,4 @@
+config BR2_PACKAGE_PERSIST_PARTITION
+	bool "persist-partition"
+	help
+	  Fake package to mount partition to save data across reboots.

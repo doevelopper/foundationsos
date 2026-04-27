@@ -1,0 +1,6 @@
+config BR2_PACKAGE_HOME_PERSISTENCE
+	bool "home-persistence"
+	select BR2_PACKAGE_PERSIST_PARTITION # runtime
+	help
+	  Fake package to save home (including shell history) across
+	  reboots.

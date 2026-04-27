@@ -1,0 +1,9 @@
+config BR2_PACKAGE_SSH_ROOT_PASSWORD
+	bool "ssh-root-password"
+	select BR2_PACKAGE_OPENSSH # runtime
+	help
+	  Fake package to enable root login using ssh.
+	  WARNING: INSECURE, do not use for real projects
+
+comment "WARNING: accepting ssh connection from user root is INSECURE, do not use for real projects"
+	depends on BR2_PACKAGE_SSH_ROOT_PASSWORD

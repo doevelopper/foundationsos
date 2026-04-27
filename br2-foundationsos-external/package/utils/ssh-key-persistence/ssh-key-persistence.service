@@ -1,0 +1,14 @@
+[Unit]
+Description=SSH Key persistence
+After=syslog.target network.target auditd.service
+Wants=mnt-persist.mount
+Before=sshd.service
+
+[Service]
+ExecStart=/opt/ssh-key-persistence-config.sh
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=10
+
+[Install]
+WantedBy=multi-user.target

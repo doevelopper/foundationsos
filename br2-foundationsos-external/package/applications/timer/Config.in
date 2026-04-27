@@ -1,0 +1,4 @@
+config BR2_PACKAGE_TIMER
+	bool "timer"
+	help
+	  Timer application example for FoundationOS.

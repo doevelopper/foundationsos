@@ -1,0 +1,22 @@
+# FoundationsOS External Packages Configuration Menu
+# This file sources all available custom packages organized by category
+
+menu "FoundationsOS Custom Packages"
+
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/applications/Config.in"
+
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/drivers/Config.in"
+
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/utils/Config.in"
+
+comment "Security & OTA Packages"
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/rpi5-security-init/Config.in"
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/rpi5-rauc-hawkbit/Config.in"
+
+comment "System Packages"
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/ucos-opkg/Config.in"
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/unipi-kernel-modules/Config.in"
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/zsh-autosuggestions/Config.in"
+source "$BR2_EXTERNAL_FOUNDATIONSOS_PATH/package/zsh-history-substring-search/Config.in"
+
+endmenu

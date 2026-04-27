@@ -1,0 +1,4 @@
+config BR2_PACKAGE_TEMPLATE_PY
+	bool "template-py"
+	help
+	  Python project template for FoundationOS applications.
