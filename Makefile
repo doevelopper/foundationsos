@@ -4,15 +4,12 @@ MAKE_HELPERS_DIRECTORY := helpers/
 
 ROOT			       := $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
 
-define receipe
-	make -C "$(OUTPUT)/buildroot" BR2_EXTERNAL="$(ROOT)" O="$(OUTPUT)" $(1)
-endef
-
 include ${MAKE_HELPERS_DIRECTORY}define.mk
 include ${MAKE_HELPERS_DIRECTORY}macros.mk
 include ${MAKE_HELPERS_DIRECTORY}versioning.mk
 
 DEVICE             ?= /dev/sdX
+TFTP_PATH          ?= /srv/tftp
 
 # .NOTPARALLEL: $(SUPPORTED_TARGETS) $(TARGETS_CONFIG) allow parallel execution of targets, but not for the same target
 
@@ -49,19 +46,18 @@ $(BLRT_PACKAGE_DIR)/buildroot-$(BLRT_VERSION): | $(BLRT_PACKAGE_DIR)/buildroot-$
 	$(Q)$(CMD_PREFIX)$(call MESSAGE,"BLRT [Extracting buildroot-$(BLRT_VERSION)] $@ ")
 	$(Q)cd $(BLRT_PACKAGE_DIR) && if [ ! -d $@ ]; then tar xf $(BLRT_PACKAGE_DIR)/buildroot-$(BLRT_VERSION).tar.gz; fi
 
-$(BLRT_PACKAGE_DIR)/.buildroot-downloaded: $(BLRT_PACKAGE_DIR)/buildroot-$(BLRT_VERSION)
-	$(Q)$(call MESSAGE,"BLRT [Caching downloaded files in $(BLRT_DL_DIR).]")
-	$(Q)touch $@
-
+# Resolve download dependency based on BLRT_MODE
 ifeq ($(BLRT_MODE),latest)
-$(BLRT_PACKAGE_DIR)/.buildroot-downloaded: $(BLRT_PACKAGE_DIR)/buildroot-latest
-	$(Q)$(call MESSAGE,"BLRT [Using latest Buildroot from master branch.]")
-	$(Q)touch $@
+    BLRT_DOWNLOAD_DEP := $(BLRT_PACKAGE_DIR)/buildroot-latest
 else ifeq ($(BLRT_MODE),master)
-$(BLRT_PACKAGE_DIR)/.buildroot-downloaded: $(BLRT_PACKAGE_DIR)/buildroot-master
-	$(Q)$(call MESSAGE,"BLRT [Using Buildroot from $(BLRT_MASTER_BRANCH) branch.]")
-	$(Q)touch $@
+    BLRT_DOWNLOAD_DEP := $(BLRT_PACKAGE_DIR)/buildroot-master
+else
+    BLRT_DOWNLOAD_DEP := $(BLRT_PACKAGE_DIR)/buildroot-$(BLRT_VERSION)
 endif
+
+$(BLRT_PACKAGE_DIR)/.buildroot-downloaded: | $(BLRT_DOWNLOAD_DEP)
+	$(Q)$(call MESSAGE,"BLRT [Buildroot source ready: $(BLRT_VERSION_RESOLVED) mode]")
+	$(Q)touch $@
 
 ## useful to patch version of package to be downloaded...  this patch preceed <package>-patch ....
 $(BLRT_PACKAGE_DIR)/.buildroot-patched: $(BLRT_PACKAGE_DIR)/.buildroot-downloaded
@@ -105,11 +101,15 @@ $(foreach defconfig,$(SUPPORTED_TARGETS),$(defconfig)-compile): %-compile:
 	$(Q)$(call MESSAGE,"[ Copying artifacts to $(BLRT_ARTIFACTS_DIR)/$*]")
 	$(Q)if [ -d $(BLRT_ARTIFACTS_DIR)/$* ]; then rm -Rf $(BLRT_ARTIFACTS_DIR)/$* && mkdir -pv $(BLRT_ARTIFACTS_DIR)/$*; fi
 	$(Q)cp -R $(BLRT_OOSB)/$*-build-artifacts/images $(BLRT_ARTIFACTS_DIR)/$*
-	$(Q)$(call MESSAGE,"[  Copying binaries to tftp server]")
-	$(Q)rm -f /srv/tftp/*
-	$(Q)cp  $(BLRT_OOSB)/$*-build-artifacts/images/u-boot.bin /srv/tftp/ 2>/dev/null || :
-	$(Q)cp --update=none $(BLRT_OOSB)/$*-build-artifacts/images/*.dtb /srv/tftp/
-	$(Q)cp --update=none $(BLRT_OOSB)/$*-build-artifacts/images/*mage /srv/tftp/
+	$(Q)$(call MESSAGE,"[ Copying binaries to tftp server (TFTP_PATH=$(TFTP_PATH))]")
+	$(Q)if [ -d "$(TFTP_PATH)" ]; then \
+		rm -f $(TFTP_PATH)/*; \
+		cp $(BLRT_OOSB)/$*-build-artifacts/images/u-boot.bin $(TFTP_PATH)/ 2>/dev/null || :; \
+		cp --update=none $(BLRT_OOSB)/$*-build-artifacts/images/*.dtb $(TFTP_PATH)/ 2>/dev/null || :; \
+		cp --update=none $(BLRT_OOSB)/$*-build-artifacts/images/*mage $(TFTP_PATH)/ 2>/dev/null || :; \
+	else \
+		$(call MESSAGE,"[  WARNING: TFTP_PATH=$(TFTP_PATH) not found, skipping TFTP deployment. Use 'make $*-compile TFTP_PATH=/path/to/tftp' to change]"); \
+	fi
 	$(Q)$(call MESSAGE,"[  Artifacts :]")
 	$(Q)du -sch --time $(BLRT_OOSB)/$*-build-artifacts/images/*
 
@@ -308,6 +308,7 @@ help: ## Display this help and exits.
 	$(Q)printf "    %-32s %s\n" "BLRT_VERSION=<version>" "Specific Buildroot version when BLRT_MODE=pinned"
 	$(Q)printf "    %-32s %s\n" "BLRT_MASTER_BRANCH=<branch>" "Git branch to clone when BLRT_MODE=master (default: master)"
 	$(Q)printf "    %-32s %s\n" "DEVICE=/dev/sdX"         "Block device for <board>-flash (required)"
+	$(Q)printf "    %-32s %s\n" "TFTP_PATH=/srv/tftp"     "TFTP server path for artifact deployment (default: /srv/tftp)"
 	$(Q)printf "    %-32s %s\n" "V=1"                     "Enable verbose build output"
 	$(Q)printf "    %-32s %s\n" "PARALLEL_JOBS=N"         "Override parallel job count (default: nproc+1)"
 	$(Q)printf "    %-32s %s\n" "RAUC_KEY_FILE=..."       "Path to RAUC signing private key"
@@ -316,23 +317,29 @@ help: ## Display this help and exits.
 	$(Q)echo
 	$(Q)echo "$(TERM_UNDERLINE)Examples:$(TERM_NOUNDERLINE)"
 	$(Q)echo
-	$(Q)printf "    %s\n" "# Use specific pinned version (default)"
-	$(Q)printf "    %s\n" "make raspberrypi5-configure"
-	$(Q)printf "    %s\n" "make raspberrypi5-compile"
+	$(Q)printf "    %s\n" "# Foundation3 (RPi3) - Use specific pinned version (default)"
+	$(Q)printf "    %s\n" "make foundation3-configure"
+	$(Q)printf "    %s\n" "make foundation3-compile"
+	$(Q)printf "    %s\n" "make foundation3-compile TFTP_PATH=~/tftp"
+	$(Q)echo
+	$(Q)printf "    %s\n" "# Foundation5 (RPi5) - Use specific pinned version (default)"
+	$(Q)printf "    %s\n" "make foundation5-configure"
+	$(Q)printf "    %s\n" "make foundation5-compile"
+	$(Q)printf "    %s\n" "make foundation5-rauc-bundle"
 	$(Q)echo
 	$(Q)printf "    %s\n" "# Use latest stable Buildroot release"
-	$(Q)printf "    %s\n" "make BLRT_MODE=latest raspberrypi5-configure"
-	$(Q)printf "    %s\n" "make BLRT_MODE=latest raspberrypi5-compile"
+	$(Q)printf "    %s\n" "make BLRT_MODE=latest foundation5-configure"
+	$(Q)printf "    %s\n" "make BLRT_MODE=latest foundation5-compile"
 	$(Q)echo
 	$(Q)printf "    %s\n" "# Use Buildroot master branch (development version)"
-	$(Q)printf "    %s\n" "make BLRT_MODE=master raspberrypi5-configure"
-	$(Q)printf "    %s\n" "make BLRT_MODE=master raspberrypi5-compile"
+	$(Q)printf "    %s\n" "make BLRT_MODE=master foundation3-configure"
+	$(Q)printf "    %s\n" "make BLRT_MODE=master foundation3-compile"
 	$(Q)echo
 	$(Q)printf "    %s\n" "# Use specific pinned version with custom BLRT_VERSION"
-	$(Q)printf "    %s\n" "make BLRT_MODE=pinned BLRT_VERSION=2025.11 raspberrypi5-configure"
+	$(Q)printf "    %s\n" "make BLRT_MODE=pinned BLRT_VERSION=2025.11 foundation5-configure"
 	$(Q)echo
 	$(Q)printf "    %s\n" "# Clone a specific git branch"
-	$(Q)printf "    %s\n" "make BLRT_MODE=master BLRT_MASTER_BRANCH=next raspberrypi5-configure"
+	$(Q)printf "    %s\n" "make BLRT_MODE=master BLRT_MASTER_BRANCH=next foundation5-configure"
 	$(Q)echo
 	$(Q)printf "    %s\n" "make raspberrypi3bp-rauc-bundle"
 	$(Q)printf "    %s\n" "make raspberrypi5-linux-menuconfig"
