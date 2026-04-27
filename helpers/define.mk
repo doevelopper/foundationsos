@@ -53,8 +53,18 @@ print-help-run           =  printf "      %-30s - %s\\n" "$1" "$2"
 print-help               =  $(Q)$(call print-help-run,$1,$2)
 
 BLRT_LATEST              := https://github.com/buildroot/buildroot.git
-BLRT_VERSION             =  2026.02-rc3
+BLRT_MODE                ?= pinned
+BLRT_VERSION             ?= 2026.02-rc3
+BLRT_MASTER_BRANCH       ?= master
 BLRT_EXT                 =  br2-foundationsos-external
+
+ifeq ($(BLRT_MODE),latest)
+    BLRT_VERSION_RESOLVED := latest
+else ifeq ($(BLRT_MODE),master)
+    BLRT_VERSION_RESOLVED := master
+else
+    BLRT_VERSION_RESOLVED := $(BLRT_VERSION)
+endif
 DEFCONFIG_DIR            =  $(BLRT_EXT)/configs
 DEFCONFIG_DIR_FULL       =  $(PWD)/$(BLRT_EXT)/configs
 CERTS_DIR                =  $(PWD)/$(BLRT_EXT)/board/common/certs
@@ -85,7 +95,15 @@ SUPPORTED_TARGETS        :=  $(sort $(notdir $(patsubst %_defconfig,%,$(wildcard
 BLRT_OOSB                =   $(PWD)/workspace
 BLRT_ARTIFACTS_DIR       =   $(BLRT_OOSB)/artifacts
 BLRT_PACKAGE_DIR         =   $(PWD)/dependencies
-BLRT_DIR                 =   $(BLRT_PACKAGE_DIR)/buildroot-$(BLRT_VERSION)
+
+ifeq ($(BLRT_MODE),latest)
+    BLRT_DIR             =   $(BLRT_PACKAGE_DIR)/buildroot-latest
+else ifeq ($(BLRT_MODE),master)
+    BLRT_DIR             =   $(BLRT_PACKAGE_DIR)/buildroot-master
+else
+    BLRT_DIR             =   $(BLRT_PACKAGE_DIR)/buildroot-$(BLRT_VERSION)
+endif
+
 BLRT_MAKE                :=  $(BLRT_DIR)/utils/brmake
 BLRT_MAKEARGS            :=  -C $(BLRT_DIR)
 BLRT_MAKEARGS            +=  BR2_EXTERNAL=$(PWD)/$(BLRT_EXT)

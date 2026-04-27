@@ -33,18 +33,35 @@ $(BLRT_PACKAGE_DIR)/buildroot-$(BLRT_VERSION).tar.gz: | $(BLRT_PACKAGE_DIR)/buil
 	$(Q)$(call MESSAGE,"BLRT [Downloading build tool $@ ]")
 	$(Q)curl --output $@ https://buildroot.org/downloads/buildroot-$(BLRT_VERSION).tar.gz
 
+$(BLRT_PACKAGE_DIR)/buildroot-latest: 
+	$(Q)$(call MESSAGE,"BLRT [Cloning latest buildroot from GitHub master] $@ ")
+	$(Q)mkdir -pv $(BLRT_PACKAGE_DIR)
+	$(Q)mkdir -pv $(BLRT_ARTIFACTS_DIR)
+	$(Q)git clone --depth 1 https://github.com/buildroot/buildroot.git $@
+
+$(BLRT_PACKAGE_DIR)/buildroot-master: 
+	$(Q)$(call MESSAGE,"BLRT [Cloning buildroot $(BLRT_MASTER_BRANCH) from GitHub] $@ ")
+	$(Q)mkdir -pv $(BLRT_PACKAGE_DIR)
+	$(Q)mkdir -pv $(BLRT_ARTIFACTS_DIR)
+	$(Q)git clone --depth 1 -b $(BLRT_MASTER_BRANCH) https://github.com/buildroot/buildroot.git $@
+
 $(BLRT_PACKAGE_DIR)/buildroot-$(BLRT_VERSION): | $(BLRT_PACKAGE_DIR)/buildroot-$(BLRT_VERSION).tar.gz
-#	$(Q)$(CMD_PREFIX)$(call MESSAGE,"BLRT [Cloning latest buildroot as buildroot-$(BLRT_VERSION)] $@ ")
-#	$(Q)git clone https://github.com/buildroot/buildroot.git $@
-# if [ ! -d $@ ]; then
-#   git clone -b $BUILDROOT_VERSION https://github.com/buildroot/buildroot.git $@ --depth 1
-# fi
 	$(Q)$(CMD_PREFIX)$(call MESSAGE,"BLRT [Extracting buildroot-$(BLRT_VERSION)] $@ ")
 	$(Q)cd $(BLRT_PACKAGE_DIR) && if [ ! -d $@ ]; then tar xf $(BLRT_PACKAGE_DIR)/buildroot-$(BLRT_VERSION).tar.gz; fi
 
 $(BLRT_PACKAGE_DIR)/.buildroot-downloaded: $(BLRT_PACKAGE_DIR)/buildroot-$(BLRT_VERSION)
 	$(Q)$(call MESSAGE,"BLRT [Caching downloaded files in $(BLRT_DL_DIR).]")
 	$(Q)touch $@
+
+ifeq ($(BLRT_MODE),latest)
+$(BLRT_PACKAGE_DIR)/.buildroot-downloaded: $(BLRT_PACKAGE_DIR)/buildroot-latest
+	$(Q)$(call MESSAGE,"BLRT [Using latest Buildroot from master branch.]")
+	$(Q)touch $@
+else ifeq ($(BLRT_MODE),master)
+$(BLRT_PACKAGE_DIR)/.buildroot-downloaded: $(BLRT_PACKAGE_DIR)/buildroot-master
+	$(Q)$(call MESSAGE,"BLRT [Using Buildroot from $(BLRT_MASTER_BRANCH) branch.]")
+	$(Q)touch $@
+endif
 
 ## useful to patch version of package to be downloaded...  this patch preceed <package>-patch ....
 $(BLRT_PACKAGE_DIR)/.buildroot-patched: $(BLRT_PACKAGE_DIR)/.buildroot-downloaded
@@ -287,6 +304,9 @@ help: ## Display this help and exits.
 	$(Q)echo
 	$(Q)echo "$(TERM_UNDERLINE)Variables:$(TERM_NOUNDERLINE)"
 	$(Q)echo
+	$(Q)printf "    %-32s %s\n" "BLRT_MODE=<mode>"       "Buildroot source mode: pinned (default), latest, or master"
+	$(Q)printf "    %-32s %s\n" "BLRT_VERSION=<version>" "Specific Buildroot version when BLRT_MODE=pinned"
+	$(Q)printf "    %-32s %s\n" "BLRT_MASTER_BRANCH=<branch>" "Git branch to clone when BLRT_MODE=master (default: master)"
 	$(Q)printf "    %-32s %s\n" "DEVICE=/dev/sdX"         "Block device for <board>-flash (required)"
 	$(Q)printf "    %-32s %s\n" "V=1"                     "Enable verbose build output"
 	$(Q)printf "    %-32s %s\n" "PARALLEL_JOBS=N"         "Override parallel job count (default: nproc+1)"
@@ -296,9 +316,24 @@ help: ## Display this help and exits.
 	$(Q)echo
 	$(Q)echo "$(TERM_UNDERLINE)Examples:$(TERM_NOUNDERLINE)"
 	$(Q)echo
+	$(Q)printf "    %s\n" "# Use specific pinned version (default)"
 	$(Q)printf "    %s\n" "make raspberrypi5-configure"
 	$(Q)printf "    %s\n" "make raspberrypi5-compile"
-	$(Q)printf "    %s\n" "make raspberrypi5-flash DEVICE=/dev/sdb"
+	$(Q)echo
+	$(Q)printf "    %s\n" "# Use latest stable Buildroot release"
+	$(Q)printf "    %s\n" "make BLRT_MODE=latest raspberrypi5-configure"
+	$(Q)printf "    %s\n" "make BLRT_MODE=latest raspberrypi5-compile"
+	$(Q)echo
+	$(Q)printf "    %s\n" "# Use Buildroot master branch (development version)"
+	$(Q)printf "    %s\n" "make BLRT_MODE=master raspberrypi5-configure"
+	$(Q)printf "    %s\n" "make BLRT_MODE=master raspberrypi5-compile"
+	$(Q)echo
+	$(Q)printf "    %s\n" "# Use specific pinned version with custom BLRT_VERSION"
+	$(Q)printf "    %s\n" "make BLRT_MODE=pinned BLRT_VERSION=2025.11 raspberrypi5-configure"
+	$(Q)echo
+	$(Q)printf "    %s\n" "# Clone a specific git branch"
+	$(Q)printf "    %s\n" "make BLRT_MODE=master BLRT_MASTER_BRANCH=next raspberrypi5-configure"
+	$(Q)echo
 	$(Q)printf "    %s\n" "make raspberrypi3bp-rauc-bundle"
 	$(Q)printf "    %s\n" "make raspberrypi5-linux-menuconfig"
 	$(Q)echo
